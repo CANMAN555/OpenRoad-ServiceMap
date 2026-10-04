@@ -10,7 +10,7 @@ It is one static file (`index.html`) with no server and no API keys, so it can b
 
 | Job | Service (free, public) |
 | --- | --- |
-| Map tiles | OpenStreetMap standard tiles via Leaflet 1.9.4 |
+| Map tiles | Esri World Imagery satellite (default) with road labels, or OpenStreetMap street tiles, via Leaflet 1.9.4 |
 | Place search | Nominatim (US, Canada, Mexico) |
 | Route | OSRM public demo server, driving profile |
 | Vendor search | Overpass API, searched in a corridor along the route |
