@@ -685,6 +685,7 @@
   --slate: #52616B;         /* Slate Gray: secondary text */
   --offwhite: #F4F6F8;      /* Off White: backgrounds */
   --orange: #FF6B00;        /* Safety Orange: actions and highlights */
+  --loves: #FFC72C;         /* Love's location pins */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -800,6 +801,22 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .pin span { transform: rotate(45deg); color: #fff; font: 800 11px var(--font-body); }
 .truck-pin { width: 40px; height: 30px; border-radius: 6px; background: var(--navy); border: 2px solid var(--orange); display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 .endpoint { width: 30px; height: 30px; border-radius: 4px; background: var(--navy); color: #fff; border: 2px solid #fff; display: grid; place-items: center; font: 800 13px var(--font-body); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+/* Love's locations layer */
+.pin.loves { width: 22px; height: 22px; background: var(--loves); border-color: var(--navy); }
+.pin.loves span { color: var(--navy); font-size: 10px; }
+.loves-cluster { width: 34px; height: 34px; border-radius: 50%; background: var(--loves); border: 2px solid var(--navy); color: var(--navy);
+  display: grid; place-items: center; font: 800 12px var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.45); }
+.leaflet-cluster-anim .leaflet-marker-icon, .leaflet-cluster-anim .leaflet-marker-shadow { transition: transform .3s ease-out, opacity .3s ease-in; }
+@media (prefers-reduced-motion: reduce) { .leaflet-cluster-anim .leaflet-marker-icon { transition: none; } }
+.lv h4 { margin: 0 0 2px; font-size: 14px; }
+.lv .t { color: var(--slate); font-size: 12px; margin-bottom: 6px; }
+.lv .row { margin: 3px 0; }
+.lv .ph { font: 700 13px var(--font-mono); }
+.lv .badge { display: inline-block; background: var(--orange); color: var(--navy); font-weight: 800; font-size: 11px; padding: 1px 6px; border-radius: 3px; margin-top: 4px; }
+.lv .src { color: var(--slate); font-size: 11px; margin-top: 6px; }
+.layer-toggle { background: var(--panel); color: var(--fg); padding: 6px 10px; border-radius: var(--radius); font: 700 13px var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.layer-toggle label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.layer-toggle input { accent-color: var(--navy); margin: 0; }
 .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
 .leaflet-container { font-family: var(--font-body); }
 .leaflet-control-layers-expanded { padding: 6px 10px; font-size: .85rem; font-weight: 600; background: var(--panel); color: var(--fg); border-radius: var(--radius); }
@@ -890,6 +907,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script>
 (() => {
   "use strict";
@@ -926,6 +944,50 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 19 }),
   ]).addTo(map);
   const layer = L.layerGroup().addTo(map);
+
+  // ---------- Love's locations (data/loves.json, refreshed weekly from Love's own store locator) ----------
+  const lovesLayer = L.markerClusterGroup
+    ? L.markerClusterGroup({
+        disableClusteringAtZoom: 9, maxClusterRadius: 45, showCoverageOnHover: false, spiderfyOnMaxZoom: false,
+        iconCreateFunction: (c) => L.divIcon({ className: "", html: `<div class="loves-cluster">${c.getChildCount()}</div>`, iconSize: [34, 34] }),
+      })
+    : L.layerGroup();
+  const lovesIcon = L.divIcon({ className: "", html: '<div class="pin loves"><span>L</span></div>', iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
+  function lovesPopup(s, checked) {
+    const title = s.type === "Truck Service" ? `Love's Truck Care / Speedco: ${s.name}` : `Love's ${s.type}: ${s.name}`;
+    const where = [s.highway, s.exit && `Exit ${s.exit}`].filter(Boolean).join(", ");
+    return `<div class="lv">
+      <h4>${esc(title)}</h4>
+      <div class="t">Store #${esc(s.id)}${where ? " · " + esc(where) : ""}</div>
+      <div class="row">${esc(s.address)}<br>${esc(s.city)}, ${esc(s.state)} ${esc(s.zip)}</div>
+      <div class="row">${s.phone ? `<a class="ph" href="${telHref(s.phone)}">${esc(s.phone)}</a>` : "No phone listed"}</div>
+      ${s.roadService24 ? `<span class="badge">24-hour road service</span>` : ""}
+      <div class="row"><a href="${esc(s.url)}" target="_blank" rel="noopener">Location page on loves.com</a></div>
+      <div class="src">From Love's store locator, checked ${esc(checked)}. Call to confirm.</div>
+    </div>`;
+  }
+  fetch("data/loves.json")
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+    .then((d) => {
+      const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+      d.stores.forEach((s) => {
+        const m = L.marker([s.lat, s.lon], { icon: lovesIcon, title: `Love's ${s.name}`, riseOnHover: true });
+        m.bindPopup(() => lovesPopup(s, checked), { maxWidth: 260, autoPan: false });
+        m.on("mouseover", () => m.openPopup());
+        lovesLayer.addLayer(m);
+      });
+      lovesLayer.addTo(map);
+      const ctl = L.control({ position: "topright" });
+      ctl.onAdd = () => {
+        const div = L.DomUtil.create("div", "layer-toggle");
+        div.innerHTML = `<label><input type="checkbox" id="loves-toggle" checked><span class="dot" style="background:var(--loves);border:1px solid var(--navy)"></span>Love's (${d.count})</label>`;
+        L.DomEvent.disableClickPropagation(div);
+        div.querySelector("input").addEventListener("change", (e) => (e.target.checked ? lovesLayer.addTo(map) : map.removeLayer(lovesLayer)));
+        return div;
+      };
+      ctl.addTo(map);
+    })
+    .catch((e) => console.warn("Love's locations unavailable:", e.message));
 
   // ---------- category chips ----------
   $("cats").insertAdjacentHTML("beforeend", CATS.map((c) =>
