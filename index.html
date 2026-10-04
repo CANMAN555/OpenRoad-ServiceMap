@@ -898,18 +898,38 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
   // ---------- map ----------
   const map = L.map("map", { zoomControl: true }).setView([39.8, -96], 4);
+  // Basemaps. Default is USDA NAIP aerial imagery: the newest public-domain US imagery (flown 2023-2025 depending on state),
+  // drawn from the USDA ImageServer one tile at a time. Below zoom 11 NAIP is too heavy to mosaic, so the older USGS
+  // National Map imagery cache fills in. Esri World Imagery is offered as an alternative (often sharper and newer in cities).
   const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
-  const esriAttr = 'Imagery &copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics';
-  const satellite = L.layerGroup([
-    L.tileLayer(ESRI + "World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: esriAttr }),
+  const NAIP = "https://gis.apfo.usda.gov/arcgis/rest/services/NAIP/USDA_CONUS_PRIME/ImageServer/exportImage";
+  const NaipLayer = L.TileLayer.extend({
+    getTileUrl(c) {
+      const size = 256, nw = L.point(c.x * size, c.y * size), se = nw.add([size, size]);
+      const a = L.CRS.EPSG3857.project(map.unproject(nw, c.z)), b = L.CRS.EPSG3857.project(map.unproject(se, c.z));
+      return `${NAIP}?bbox=${a.x},${b.y},${b.x},${a.y}&bboxSR=3857&imageSR=3857&size=${size},${size}&format=jpgpng&f=image`;
+    },
+  });
+  const labels = () => [
     L.tileLayer(ESRI + "Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }),
     L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }),
+  ];
+  const naip = L.layerGroup([
+    L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, maxNativeZoom: 16, attribution: 'Imagery: <a href="https://www.usgs.gov/centers/eros/science/usgs-eros-archive-aerial-photography-national-agriculture-imagery-program-naip">USDA NAIP</a>, <a href="https://www.usgs.gov/programs/national-geospatial-program/national-map">USGS The National Map</a>',
+    }),
+    new NaipLayer("", { minZoom: 11, maxZoom: 19, maxNativeZoom: 18 }),
+    ...labels(),
+  ]);
+  const esri = L.layerGroup([
+    L.tileLayer(ESRI + "World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: 'Imagery &copy; <a href="https://www.esri.com/">Esri</a> and its imagery partners' }),
+    ...labels(),
   ]);
   const streets = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   });
-  satellite.addTo(map);
-  L.control.layers({ "Satellite": satellite, "Street map": streets }, null, { collapsed: false, position: "topright" }).addTo(map);
+  naip.addTo(map);
+  L.control.layers({ "Satellite (USDA, public)": naip, "Satellite (Esri)": esri, "Street map": streets }, null, { collapsed: false, position: "topright" }).addTo(map);
   const layer = L.layerGroup().addTo(map);
 
   // ---------- category chips ----------
