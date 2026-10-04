@@ -1,6 +1,6 @@
 # OpenRoad Service Map
 
-**Live site: https://canman555.github.io/OpenRoad-SeviceMap/**
+**Live site: https://canman555.github.io/OpenRoad-ServiceMap/**
 
 A free, open source website for truck drivers and dispatchers setting up a road call. Enter a route, or where the truck is broken down, and it lists truck repair shops, tire shops, towing, truck stops and truck dealers near the route. Results are sorted by route mile and have tap-to-call phone numbers.
 
@@ -48,8 +48,8 @@ Vendor types come from these OpenStreetMap tags: `shop=truck_repair`, `shop=tyre
 No build step and no API keys. Clone the repo and serve the folder:
 
 ```sh
-git clone https://github.com/CANMAN555/OpenRoad-SeviceMap.git
-cd OpenRoad-SeviceMap
+git clone https://github.com/CANMAN555/OpenRoad-ServiceMap.git
+cd OpenRoad-ServiceMap
 python3 -m http.server 8000
 ```
 
