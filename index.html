@@ -785,6 +785,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 /* map pins */
 .pin { width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: grid; place-items: center; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .pin span { transform: rotate(45deg); color: #fff; font: 800 11px var(--font-body); }
+.truck-pin { width: 40px; height: 30px; border-radius: 6px; background: var(--sign); border: 2px solid #fff; display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 .endpoint { width: 30px; height: 30px; border-radius: 4px; background: var(--sign); color: #fff; border: 2px solid #fff; display: grid; place-items: center; font: 800 13px var(--font-body); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
 .leaflet-container { font-family: var(--font-body); }
@@ -1131,8 +1132,25 @@ nwr["name"~"towing|wrecker",i]${A};
   }
   function drawSpot(s, radiusM) {
     L.circle([s.lat, s.lon], { radius: radiusM, color: cssVar("--sign"), weight: 2, fillOpacity: .06 }).addTo(layer);
-    endpoint([s.lat, s.lon], "⚑", "Truck: " + s.label);
+    truckMarker([s.lat, s.lon], "Truck: " + s.label);
     map.fitBounds(L.latLng(s.lat, s.lon).toBounds(radiusM * 2.2));
+  }
+  // Side view of a semi tractor-trailer, drawn for the truck location pin.
+  const TRUCK_SVG = `<svg viewBox="0 0 34 20" width="28" height="17" aria-hidden="true">
+    <rect x="11" y="1.5" width="22" height="12" rx="1" fill="#fff"/>
+    <path d="M1.5 14.5V9.2L4 5.5h4V2.5h2.5v12z" fill="#fff"/>
+    <path d="M3.2 9.2 4.8 7h2.4v2.2z" fill="var(--sign)"/>
+    <rect x="1" y="13.5" width="32.5" height="1.6" fill="#fff"/>
+    <g fill="#fff" stroke="var(--sign)" stroke-width="1.2">
+      <circle cx="4.6" cy="16.6" r="2.3"/><circle cx="10" cy="16.6" r="2.3"/>
+      <circle cx="24.6" cy="16.6" r="2.3"/><circle cx="29.8" cy="16.6" r="2.3"/>
+    </g>
+  </svg>`;
+  function truckMarker(ll, title) {
+    L.marker(ll, {
+      icon: L.divIcon({ className: "", html: `<div class="truck-pin">${TRUCK_SVG}</div>`, iconSize: [40, 30], iconAnchor: [20, 15] }),
+      title, zIndexOffset: 1000,
+    }).bindPopup(esc(title)).addTo(layer);
   }
   function endpoint(ll, txt, title) {
     L.marker(ll, { icon: L.divIcon({ className: "", html: `<div class="endpoint">${txt}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }), title }).addTo(layer);
