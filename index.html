@@ -823,11 +823,11 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         </div>
 
         <div id="route-fields" class="row">
-          <label class="f">From<input type="text" id="from" placeholder="City, address, or lat, lon" value="Chicago, IL"></label>
-          <label class="f">To<input type="text" id="to" placeholder="City, address, or lat, lon" value="Indianapolis, IN"></label>
+          <label class="f">From<input type="text" id="from" placeholder="City, address, or 41.2375, -95.8780" value="Chicago, IL"></label>
+          <label class="f">To<input type="text" id="to" placeholder="City, address, or 41.2375, -95.8780" value="Indianapolis, IN"></label>
         </div>
         <div id="spot-fields" class="row" hidden>
-          <label class="f">Truck location<input type="text" id="spot" placeholder="Address, exit, town, or lat, lon"></label>
+          <label class="f">Truck location<input type="text" id="spot" placeholder="Address, town, or (41.2375, -95.8780)"></label>
           <button type="button" class="btn small" id="locate" style="flex:0 0 auto">Use my location</button>
         </div>
 
@@ -1006,9 +1006,22 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     if (!r.ok) throw new Error("HTTP " + r.status);
     return r.json();
   }
+  // Accepts "41.237536, -95.877982", "(41.237536, -95.877982)", "[41.2375 -95.8780]",
+  // "41.2375° N, 95.8780° W" and longitude-first pairs. Returns null when the text isn't a coordinate pair.
+  function parseCoords(q) {
+    const s = q.trim().replace(/^[\s([{]+|[\s)\]}]+$/g, "").replace(/°/g, " ").toUpperCase();
+    const m = s.match(/^([+-]?\d+(?:\.\d+)?)\s*([NS])?\s*[,;\s]\s*([+-]?\d+(?:\.\d+)?)\s*([EW])?$/);
+    if (!m) return null;
+    let a = +m[1], b = +m[3];
+    if (m[2] === "S") a = -Math.abs(a);
+    if (m[4] === "W") b = -Math.abs(b);
+    if (Math.abs(a) > 90 && Math.abs(b) <= 90 && !m[2] && !m[4]) [a, b] = [b, a]; // longitude typed first
+    if (Math.abs(a) > 90 || Math.abs(b) > 180) return null;
+    return { lat: a, lon: b };
+  }
   async function geocode(q) {
-    const m = q.trim().match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/);
-    if (m) return { lat: +m[1], lon: +m[2], label: q.trim() };
+    const c = parseCoords(q);
+    if (c) return { lat: c.lat, lon: c.lon, label: c.lat.toFixed(5) + ", " + c.lon.toFixed(5) };
     const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us,ca,mx&q=" + encodeURIComponent(q);
     const j = await getJSON(url, { headers: { "Accept-Language": "en" } });
     if (!j.length) throw new Error(`Couldn't find "${q}". Try adding the state, or enter coordinates like 41.88, -87.63.`);
