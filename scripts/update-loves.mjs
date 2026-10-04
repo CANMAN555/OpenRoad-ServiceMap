@@ -2,7 +2,7 @@
 // store locator uses) and writes data/loves.json. Run by .github/workflows/update-loves.yml.
 // Falls back to the latest All The Places run (CC0, scraped weekly from loves.com) if Love's
 // blocks the request.
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 
 const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0; +https://github.com/CANMAN555/OpenRoad-ServiceMap)";
 const PAGE_SIZE = 100;
@@ -49,16 +49,13 @@ async function fromLoves() {
     if (!r.ok) throw new Error("search_stores HTTP " + r.status);
     const j = await r.json();
     const batch = j.stores || [];
-    if (page === 0 && batch[0]) {
-      console.log("Sample store keys:", Object.keys(batch[0]).join(", "));
-      console.log("Sample store:", JSON.stringify(batch[0]).slice(0, 3000));
-    }
     stores.push(...batch);
     if (batch.length < PAGE_SIZE) break;
   }
   return stores.map((s) => {
     const number = clean(pick(s, "number", "storeNumber", "id"));
-    const type = clean(pick(s, "storeSearchData.name", "facilityType", "type")) || "Travel Stop";
+    const type = clean(pick(s, "facilitySubtypeName", "storeSearchData.name")) || "Travel Stop";
+    const flags = Object.fromEntries((s.customFields || []).map((f) => [f.fieldName, f.fieldValue]));
     return {
       id: number,
       name: clean(pick(s, "preferredName", "name")) || `Love's #${number}`,
@@ -71,6 +68,10 @@ async function fromLoves() {
       phone: formatPhone(pick(s, "phone", "phoneNumber", "mainPhone", "storePhone")),
       lat: Number(pick(s, "latitude", "lat", "location.lat")),
       lon: Number(pick(s, "longitude", "lng", "lon", "location.lng")),
+      highway: clean(s.highway),
+      exit: clean(s.exitNumber),
+      roadService24: flags["24hourroadservice"] === "true",
+      tireCare: s.isTireCare === true,
       url: (number && urls[number]) || (number ? `https://www.loves.com/locations/${number}` : "https://www.loves.com/locations"),
     };
   });
@@ -121,6 +122,7 @@ if (stores.length < 300) throw new Error(`Only ${stores.length} locations found;
 
 const counts = stores.reduce((m, s) => ((m[s.type] = (m[s.type] || 0) + 1), m), {});
 console.log(`Writing ${stores.length} locations`, counts);
+await mkdir("data", { recursive: true });
 await writeFile(
   "data/loves.json",
   JSON.stringify({ source, fetched_at: new Date().toISOString(), count: stores.length, counts, stores }, null, 0) + "\n",
