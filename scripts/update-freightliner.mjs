@@ -51,22 +51,26 @@ async function lovesCoords() {
 async function censusGeocode(list) {
   const out = new Map();
   const csvField = (v) => `"${String(v || "").replace(/"/g, "'")}"`;
-  for (let i = 0; i < list.length; i += 1000) {
-    const csv = list.slice(i, i + 1000).map((s) => [s.id, s.street, s.city, s.state, s.zip].map(csvField).join(",")).join("\n");
-    const form = new FormData();
-    form.append("addressFile", new Blob([csv], { type: "text/csv" }), "addresses.csv");
-    form.append("benchmark", "Public_AR_Current");
-    try {
-      const r = await fetch("https://geocoding.geo.census.gov/geocoder/locations/addressbatch", { method: "POST", body: form, headers: { "User-Agent": UA } });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      for (const line of (await r.text()).split("\n")) {
-        const cols = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
-        if (cols[2] !== "Match" || !cols[5]) continue;
-        const [lon, lat] = cols[5].split(",").map(Number);
-        if (Number.isFinite(lat) && Number.isFinite(lon)) out.set(cols[0], [lat, lon]);
+  for (let i = 0; i < list.length; i += 200) {
+    const csv = list.slice(i, i + 200).map((s) => [s.id, s.street, s.city, s.state, s.zip].map(csvField).join(",")).join("\n");
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const form = new FormData();
+      form.append("addressFile", new Blob([csv], { type: "text/csv" }), "addresses.csv");
+      form.append("benchmark", "Public_AR_Current");
+      try {
+        const r = await fetch("https://geocoding.geo.census.gov/geocoder/locations/addressbatch", { method: "POST", body: form, headers: { "User-Agent": UA } });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        for (const line of (await r.text()).split("\n")) {
+          const cols = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+          if (cols[2] !== "Match" || !cols[5]) continue;
+          const [lon, lat] = cols[5].split(",").map(Number);
+          if (Number.isFinite(lat) && Number.isFinite(lon)) out.set(cols[0], [lat, lon]);
+        }
+        break;
+      } catch (e) {
+        console.warn(`Census geocoder (batch ${i / 200 + 1}, try ${attempt + 1}):`, e.message);
+        await new Promise((res) => setTimeout(res, 10000 * (attempt + 1)));
       }
-    } catch (e) {
-      console.warn("Census geocoder unavailable:", e.message);
     }
   }
   return out;
