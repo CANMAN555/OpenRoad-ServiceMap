@@ -1,33 +1,22 @@
-// Temporary: find the data feeds behind TA, Freightliner and Volvo locators.
 import { writeFile, mkdir } from "node:fs/promises";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36";
 await mkdir("probe/out", { recursive: true });
-async function get(url, name) {
+async function get(url, name, opts = {}) {
   try {
-    const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "*/*" } });
+    const r = await fetch(url, { ...opts, headers: { "User-Agent": UA, Accept: "*/*", ...(opts.headers || {}) } });
     const t = await r.text();
     await writeFile("probe/out/" + name, t);
     console.log(name, r.status, t.length);
     return t;
   } catch (e) { console.log(name, "ERR", e.message); return ""; }
 }
-async function scripts(html, base, prefix) {
-  const urls = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => new URL(m[1], base).href).filter((u) => new URL(u).host === new URL(base).host);
-  let i = 0;
-  for (const u of urls.slice(0, 40)) {
-    const js = await get(u, `${prefix}-js${i++}.js`);
-    const hits = [...new Set([...js.matchAll(/["'`]((?:https?:)?\/\/[^"'`\s]*(?:api|json|locat|dealer|search)[^"'`\s]*|\/[a-z0-9_\-\/]*(?:api|json|locat|dealer)[a-z0-9_\-\/.?=&]*)["'`]/gi)].map((m) => m[1]))];
-    if (hits.length) console.log(prefix, u, "\n  " + hits.slice(0, 60).join("\n  "));
-  }
-}
-const ta = await get("https://www.ta-petro.com/location/all-locations", "ta-all.html");
-await scripts(ta, "https://www.ta-petro.com/", "ta");
-await get("https://www.ta-petro.com/location/ne/ta-omaha/", "ta-omaha.html");
-await get("https://www.ta-petro.com/location/al/ta-tuscaloosa/", "ta-tuscaloosa.html");
-await get("https://www.ta-petro.com/sitemap.xml", "ta-sitemap.xml");
-const fl = await get("https://www.freightliner.com/dealer-search/", "fl-search.html");
-await scripts(fl, "https://www.freightliner.com/", "fl");
-await get("https://www.freightliner.com/dealers/united-states/NE/", "fl-ne.html");
-await get("https://dealerlocator.volvotrucks.us/Volvo_DealerJson.ashx", "volvo.json");
-const vf = await get("https://www.volvotrucks.us/find-a-dealer/", "volvo-find.html");
-await scripts(vf, "https://www.volvotrucks.us/", "volvo");
+await get("https://www.ta-petro.com/fleets/eshop-2", "ta-eshop2.html");
+await get("https://www.ta-petro.com/location/ne/petro-council-bluffs/", "ta-petro-cb.html");
+await get("https://www.freightliner.com/webpack-chunks/chunk.scripts_components_dealers_js.928d272295ef42271c47.js", "fl-dealers-a.js");
+await get("https://www.freightliner.com/static/webpack-chunks/chunk.scripts_components_dealers_js.928d272295ef42271c47.js", "fl-dealers-b.js");
+await get("https://www.freightliner.com/webpack-chunks/chunk.scripts_components_dealerMap_js.72c1eb9ffebfa77394f5.js", "fl-dealermap-a.js");
+await get("https://www.freightliner.com/static/webpack-chunks/chunk.scripts_components_dealerMap_js.72c1eb9ffebfa77394f5.js", "fl-dealermap-b.js");
+await get("https://www.freightliner.com/umbraco/backoffice/dealers/geo-search?lat=41.25&lng=-95.93&radius=100", "fl-geo-get.json");
+await get("https://www.freightliner.com/umbraco/backoffice/dealers/geo-search", "fl-geo-post.json", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lat: 41.25, lng: -95.93, radius: 100 }) });
+await get("https://www.freightliner.com/dealer/", "fl-dealer.html");
+await get("https://www.freightliner.com/sitemap.xml", "fl-sitemap.xml");
