@@ -813,6 +813,12 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .lv .row { margin: 3px 0; }
 .lv .ph { font: 700 13px var(--font-mono); }
 .lv .badge { display: inline-block; background: var(--orange); color: var(--navy); font-weight: 800; font-size: 11px; padding: 1px 6px; border-radius: 3px; margin-top: 4px; }
+.lv .shop { font-weight: 800; font-size: 12px; padding: 3px 7px; border-radius: 3px; display: inline-block; margin: 2px 0 4px; }
+.lv .shop.yes { background: var(--navy); color: #fff; border-left: 4px solid var(--orange); }
+.lv .shop.no { background: #e6eaee; color: var(--navy); }
+.lv .svc { font-size: 11.5px; color: var(--blue); margin-bottom: 4px; }
+.lv .hrs { font-size: 12px; margin: 4px 0 6px; padding: 5px 0; border-block: 1px solid #e3e8ec; display: grid; gap: 2px; }
+.lv .hrs b { color: var(--navy); }
 .lv .src { color: var(--slate); font-size: 11px; margin-top: 6px; }
 .layer-toggle { background: var(--panel); color: var(--fg); padding: 6px 10px; border-radius: var(--radius); font: 700 13px var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 .layer-toggle label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
@@ -953,12 +959,43 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       })
     : L.layerGroup();
   const lovesIcon = L.divIcon({ className: "", html: '<div class="pin loves"><span>L</span></div>', iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
+  const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const tidyHours = (h) =>
+    h ? h.replace(/open 24[- ]hours/i, "Open 24 hours").replace(/\bM-F\b/g, "Mon–Fri").replace(/\bS-S\b/g, "Sat–Sun").replace(/\s*\/\s*/g, "; ") : h;
+  // [{day:"Mon",hours:"6 a.m. – 10 p.m."}, ...] -> "Mon–Fri 6 a.m. – 10 p.m.; Sat–Sun 8 a.m. – 6 p.m."
+  function dayRanges(days) {
+    const by = Object.fromEntries((days || []).map((d) => [d.day, tidyHours(d.hours)]));
+    const out = [];
+    DAY_ORDER.forEach((d) => {
+      if (!by[d]) return;
+      const last = out[out.length - 1];
+      if (last && last.hours === by[d] && DAY_ORDER.indexOf(last.end) === DAY_ORDER.indexOf(d) - 1) last.end = d;
+      else out.push({ start: d, end: d, hours: by[d] });
+    });
+    return out.map((r) => `${r.start === r.end ? r.start : r.start + "–" + r.end} ${r.hours}`).join("; ");
+  }
   function lovesPopup(s, checked) {
     const title = s.type === "Truck Service" ? `Love's Truck Care / Speedco: ${s.name}` : `Love's ${s.type}: ${s.name}`;
     const where = [s.highway, s.exit && `Exit ${s.exit}`].filter(Boolean).join(", ");
+    const shop = s.shop || {}, h = s.hours || {};
+    const hoursRows = [
+      ["Store", tidyHours(h.store)],
+      [s.type === "Truck Service" ? "Shop" : "Truck Care shop", tidyHours(h.truckCare)],
+      ["Truck Wash", tidyHours(h.truckWash)],
+      [s.type === "Truck Service" ? "Shop" : "Business hours", dayRanges(h.days)],
+    ].filter(([, v]) => v);
+    const food = (h.restaurants || []).map((r) => (r.hours ? `${r.name} (${r.hours.replace("Open ", "")})` : r.name)).join(", ");
     return `<div class="lv">
       <h4>${esc(title)}</h4>
       <div class="t">Store #${esc(s.id)}${where ? " · " + esc(where) : ""}</div>
+      ${shop.onSite
+        ? `<div class="shop yes">Truck shop on site${shop.truckCare24 ? " · open 24 hours" : ""}</div>
+           ${shop.services && shop.services.length ? `<div class="svc">${shop.services.map(esc).join(" · ")}</div>` : ""}`
+        : `<div class="shop no">Fuel stop only. Love's lists no repair shop here.</div>`}
+      <div class="hrs">${hoursRows.length
+        ? hoursRows.map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join("")
+        : "<div>Hours not listed. Call to confirm.</div>"}
+        ${food ? `<div><b>Food:</b> ${esc(food)}</div>` : ""}</div>
       <div class="row">${esc(s.address)}<br>${esc(s.city)}, ${esc(s.state)} ${esc(s.zip)}</div>
       <div class="row">${s.phone ? `<a class="ph" href="${telHref(s.phone)}">${esc(s.phone)}</a>` : "No phone listed"}</div>
       ${s.roadService24 ? `<span class="badge">24-hour road service</span>` : ""}
@@ -972,7 +1009,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
       d.stores.forEach((s) => {
         const m = L.marker([s.lat, s.lon], { icon: lovesIcon, title: `Love's ${s.name}`, riseOnHover: true });
-        m.bindPopup(() => lovesPopup(s, checked), { maxWidth: 260, autoPan: false });
+        m.bindPopup(() => lovesPopup(s, checked), { maxWidth: 290, autoPan: false });
         m.on("mouseover", () => m.openPopup());
         lovesLayer.addLayer(m);
       });
