@@ -116,6 +116,8 @@ async function fromLoves() {
         truckCare24: flags["24hourtruckcare"] === "true",
         speedcoNearby: flags["speedconearby"] === "true" && !amenities.has("Speedco On-Site"),
       },
+      fuel: [...new Set((s.fuelPrices || []).map((f) => clean(f.fuelType)).filter(Boolean))],
+      roadsideAssistance: extra.has("Roadside Assistance"),
       hours: {
         store: facilityHours["Store"] || null,
         truckCare: facilityHours["Truck Care"] || null,
