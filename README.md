@@ -19,7 +19,7 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **Route mile for every result**, plus how far off route it is.
 - **Tap-to-call** numbers, hours, a 24/7 filter, and a "has phone number" filter.
 - **Copy info** button that copies name, phone, address, route mile and coordinates for dispatch.
-- **Satellite view** using public USDA aerial imagery, with an Esri satellite and a street map option.
+- **Satellite view** using Esri World Imagery, with road and town labels.
 - **Fix this listing** link on every result, so anyone can correct the data on OpenStreetMap.
 - Works on phones, with light and dark themes.
 
@@ -31,7 +31,7 @@ It is one static file (`index.html`) with no server and no API keys, so it can b
 
 | Job | Service (free, public) |
 | --- | --- |
-| Map tiles | USDA NAIP aerial imagery (default, public domain, 2023-2025 flights) with USGS National Map imagery when zoomed out; Esri World Imagery and OpenStreetMap street map as options; Leaflet 1.9.4 |
+| Map tiles | Esri World Imagery satellite with Esri road and place labels, via Leaflet 1.9.4 |
 | Place search | Nominatim (US, Canada, Mexico) |
 | Route | OSRM public demo server, driving profile |
 | Vendor search | Overpass API, searched in a corridor along the route |
@@ -42,7 +42,7 @@ Vendor types come from these OpenStreetMap tags: `shop=truck_repair`, `shop=tyre
 
 - **Listings can be missing or out of date.** OpenStreetMap is maintained by volunteers. Always call ahead to confirm hours, heavy-truck capability and payment. Each result shows when its listing was last edited and links to fix it on OpenStreetMap.
 - **Routes are car routes.** OSRM's public server does not know truck height, weight, length or hazmat restrictions. Use a truck GPS for the actual drive.
-- **Public servers have usage limits.** Nominatim allows about one request per second, and the OSRM demo server and OSM tile servers are meant for light use. If traffic grows, point the URLs at your own or a paid provider.
+- **Public servers have usage limits.** Nominatim allows about one request per second, and the OSRM demo server is meant for light use. Esri World Imagery is used under Esri's terms, which may require an Esri account for heavy or commercial use. If traffic grows, point the URLs at your own or a paid provider.
 - Mobile road service companies are rarely mapped in OpenStreetMap, so they mostly won't show up.
 
 ## Run locally
