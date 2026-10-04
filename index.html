@@ -1113,7 +1113,7 @@ nwr["name"~"towing|wrecker",i]${A};
           const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
           return { id: el.type + "/" + el.id, cat: classify(el.tags || {}), name: el.tags?.name, lat, lon, tags: el.tags || {}, mile: hav([s.lat, s.lon], [lat, lon]) / MI, off: null, updated: el.timestamp };
         }).filter((v) => v.lat != null);
-        routeInfo = { spot: s.label };
+        routeInfo = { spot: s.label, at: [s.lat, s.lon] };
       }
       $("demo-banner").hidden = true;
       status(results.length ? "" : "No listings found. Try a wider search, or check the map for places OpenStreetMap may be missing.");
@@ -1193,7 +1193,7 @@ nwr["name"~"towing|wrecker",i]${A};
     const unit = routeInfo?.spot ? "mi away" : "mile";
     $("list").innerHTML = shown.length ? shown.map((v) => card(v, unit)).join("") :
       (results.length ? `<li class="empty">No listings match these filters.</li>` : "");
-    if (fit === true && shown.length && routeInfo?.spot) map.fitBounds(L.latLngBounds(shown.map((v) => [v.lat, v.lon])).pad(0.2));
+    if (fit === true && shown.length && routeInfo?.spot) map.fitBounds(L.latLngBounds([routeInfo.at, ...shown.map((v) => [v.lat, v.lon])]).pad(0.15), { maxZoom: 15 });
   }
 
   function card(v, unit) {
