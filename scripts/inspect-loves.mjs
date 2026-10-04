@@ -1,8 +1,16 @@
 // Temporary: prints the shape of Love's store records so the updater can map shop and hours fields.
 const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0)";
 const all = [];
+async function post(body) {
+  for (let i = 0; i < 6; i++) {
+    const r = await fetch("https://www.loves.com/api/search_stores", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": UA }, body: JSON.stringify(body) });
+    if (r.ok) return r;
+    console.log("retry after HTTP", r.status); await new Promise((s) => setTimeout(s, 5000 * (i + 1)));
+  }
+  throw new Error("Love's feed kept failing");
+}
 for (let page = 0; page < 10; page++) {
-  const r = await fetch("https://www.loves.com/api/search_stores", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": UA }, body: JSON.stringify({ pageNumber: page, pageSize: "100", lat: 36.5489, lng: -118.9127 }) });
+  const r = await post({ pageNumber: page, pageSize: "100", lat: 36.5489, lng: -118.9127 });
   const txt = await r.text(); let b; try { b = JSON.parse(txt).stores; } catch { b = null; }
   if (!Array.isArray(b)) { console.log("HTTP", r.status, txt.slice(0, 500)); break; } all.push(...b); if (b.length < 100) break;
 }
