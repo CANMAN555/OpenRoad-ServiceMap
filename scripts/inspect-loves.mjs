@@ -2,8 +2,9 @@
 const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0)";
 const all = [];
 for (let page = 0; page < 10; page++) {
-  const r = await fetch("https://www.loves.com/api/search_stores", { method: "POST", headers: { "Content-Type": "application/json", "User-Agent": UA }, body: JSON.stringify({ pageNumber: page, pageSize: "100", lat: 36.5, lng: -97.5 }) });
-  const b = (await r.json()).stores; all.push(...b); if (b.length < 100) break;
+  const r = await fetch("https://www.loves.com/api/search_stores", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": UA }, body: JSON.stringify({ pageNumber: page, pageSize: "100", lat: 36.5489, lng: -118.9127 }) });
+  const txt = await r.text(); let b; try { b = JSON.parse(txt).stores; } catch { b = null; }
+  if (!Array.isArray(b)) { console.log("HTTP", r.status, txt.slice(0, 500)); break; } all.push(...b); if (b.length < 100) break;
 }
 const names = {}, mapped = {};
 for (const s of all) {
