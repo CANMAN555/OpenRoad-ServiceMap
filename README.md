@@ -20,7 +20,7 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **Tap-to-call** numbers, hours, a 24/7 filter, and a "has phone number" filter.
 - **Copy info** button that copies name, phone, address, route mile and coordinates for dispatch.
 - **Satellite view** using Esri World Imagery, with road and town labels.
-- **Every Love's location in the US** (Travel Stops, Country Stores and Truck Care/Speedco shops) as yellow pins. Hover or tap a pin for the address, phone number, highway exit, hours and a link to the location page on loves.com. Each popup says plainly whether the location sells truck diesel, has a truck repair shop and offers tire service, and the pin letter tells you at a glance: **S** fuel and shop, **R** repair shop only (no fuel), **F** fuel only.
+- **Every Love's location in the US** (Travel Stops, Country Stores and Truck Care/Speedco shops) as yellow pins. Hover or tap a pin for the address, phone number, highway exit, hours and a link to the location page on loves.com. Each popup says plainly whether the location sells truck diesel, has a truck repair shop and offers tire service.
 - **Fix this listing** link on every result, so anyone can correct the data on OpenStreetMap.
 - Works on phones, with light and dark themes.
 

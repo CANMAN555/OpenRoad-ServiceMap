@@ -827,8 +827,6 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .layer-toggle { background: var(--panel); color: var(--fg); padding: 6px 10px; border-radius: var(--radius); font: 700 13px var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 .layer-toggle label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .layer-toggle input { accent-color: var(--navy); margin: 0; }
-.layer-toggle .legend { font-weight: 600; font-size: 11px; color: var(--muted); margin-top: 3px; }
-.layer-toggle .legend b { color: var(--fg); }
 .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
 .leaflet-container { font-family: var(--font-body); }
 .leaflet-control-layers-expanded { padding: 6px 10px; font-size: .85rem; font-weight: 600; background: var(--panel); color: var(--fg); border-radius: var(--radius); }
@@ -964,9 +962,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         iconCreateFunction: (c) => L.divIcon({ className: "", html: `<div class="loves-cluster">${c.getChildCount()}</div>`, iconSize: [34, 34] }),
       })
     : L.layerGroup();
-  // Pin letter: S = fuel and truck shop, R = repair shop only (no fuel), F = fuel only.
-  const lovesIcons = Object.fromEntries(["S", "R", "F"].map((k) => [k, L.divIcon({ className: "", html: `<div class="pin loves"><span>${k}</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] })]));
-  const lovesKind = (s) => (s.shop && s.shop.onSite ? ((s.fuel || []).length ? "S" : "R") : "F");
+  const lovesIcon = L.divIcon({ className: "", html: `<div class="pin loves"><span>L</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
   const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const tidyHours = (h) =>
     h ? h.replace(/open 24[- ]hours/i, "Open 24 hours").replace(/\bM-F\b/g, "Mon–Fri").replace(/\bS-S\b/g, "Sat–Sun").replace(/\s*\/\s*/g, "; ") : h;
@@ -1022,7 +1018,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     .then((d) => {
       const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
       d.stores.forEach((s) => {
-        const m = L.marker([s.lat, s.lon], { icon: lovesIcons[lovesKind(s)], title: `Love's ${s.name}`, riseOnHover: true });
+        const m = L.marker([s.lat, s.lon], { icon: lovesIcon, title: `Love's ${s.name}`, riseOnHover: true });
         m.bindPopup(() => lovesPopup(s, checked), { maxWidth: 290, autoPan: false });
         m.on("mouseover", () => m.openPopup());
         lovesLayer.addLayer(m);
@@ -1031,8 +1027,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       const ctl = L.control({ position: "topright" });
       ctl.onAdd = () => {
         const div = L.DomUtil.create("div", "layer-toggle");
-        div.innerHTML = `<label><input type="checkbox" id="loves-toggle" checked><span class="dot" style="background:var(--loves);border:1px solid var(--navy)"></span>Love's (${d.count})</label>
-          <div class="legend"><b>S</b> fuel + shop · <b>R</b> repair only · <b>F</b> fuel only</div>`;
+        div.innerHTML = `<label><input type="checkbox" id="loves-toggle" checked><span class="dot" style="background:var(--loves);border:1px solid var(--navy)"></span>Love's (${d.count})</label>`;
         L.DomEvent.disableClickPropagation(div);
         div.querySelector("input").addEventListener("change", (e) => (e.target.checked ? lovesLayer.addTo(map) : map.removeLayer(lovesLayer)));
         return div;
