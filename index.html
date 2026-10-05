@@ -926,7 +926,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
       <div class="foot">
         <div class="notice"><strong>Always call ahead.</strong>Listings come from OpenStreetMap, which volunteers maintain. A shop can be missing, closed, or have an old phone number. Confirm hours, truck capacity and payment before you dispatch. Routes are standard driving routes and do not account for truck height, weight or hazmat restrictions.</div>
-        <p>Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>, ODbL. Routing by <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a>. Search by <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>. Geocoding by <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>. City suggestions from the <a href="https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html" target="_blank" rel="noopener">U.S. Census Bureau</a>.</p>
+        <p>Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>, ODbL. Routing by <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a>. Vendor listings refreshed weekly from <a href="https://download.geofabrik.de/" target="_blank" rel="noopener">Geofabrik</a> OpenStreetMap extracts. Geocoding by <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>. City suggestions from the <a href="https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html" target="_blank" rel="noopener">U.S. Census Bureau</a>.</p>
         <p>Know a shop that's missing or wrong? Use the "Fix this listing" link on any result, or add it at <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">openstreetmap.org</a>, and every driver using this site gets the fix.</p>
       </div>
     </div>
@@ -972,6 +972,13 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 19 }),
   ]).addTo(map);
   const layer = L.layerGroup().addTo(map);
+  // Vendor pins from a search. Clustered, because a 250 mile search can return thousands of listings.
+  const vendorPins = (L.markerClusterGroup
+    ? L.markerClusterGroup({
+        disableClusteringAtZoom: 11, maxClusterRadius: 50, showCoverageOnHover: false, spiderfyOnMaxZoom: false,
+        iconCreateFunction: (c) => L.divIcon({ className: "", html: `<div class="brand-cluster" style="--b:var(--navy);--bt:#fff;border-color:var(--orange)">${c.getChildCount()}</div>`, iconSize: [34, 34] }),
+      })
+    : L.layerGroup()).addTo(map);
 
   // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier ----------
   // Each brand's data/<key>.json is refreshed weekly from that company's own locator by a GitHub Action.
@@ -1634,6 +1641,58 @@ nwr["name"~"towing|wrecker",i]${A};
       throw new Error("The vendor search service is busy or unreachable (" + e.message + "). Wait a minute and try again.");
     }
   }
+  // Listings come from data/osm/, built weekly from OpenStreetMap by a GitHub Action, so a search
+  // runs in the browser at any radius and never waits on a busy public server. If those files
+  // aren't there, the page falls back to asking the live Overpass servers.
+  let osmIndex;
+  const loadOsmIndex = () => (osmIndex ||= fetch("data/osm/index.json").then((r) => (r.ok ? r.json() : null)).catch(() => null));
+  const loadTile = (k) => remember("tile:" + k, () => getJSON(`data/osm/t${k}.json`, {}, { timeout: 30000 }));
+  // Listings within radiusM of any of the points, as [{id, lat, lon, tags, updated}].
+  async function listingsNear(idx, points, radiusM) {
+    const D = idx.tile_degrees, keys = new Set();
+    const cell = radiusM / 111320; // grid of the search points, one cell about one radius tall
+    const grid = new Map(), gk = (a, o) => a + "," + o;
+    const lonCell = (lat) => cell / Math.max(Math.cos(lat * Math.PI / 180), 0.05);
+    let maxLat = 0;
+    for (const p of points) maxLat = Math.max(maxLat, Math.abs(p[0]));
+    const lc = lonCell(Math.min(maxLat + cell, 85));
+    for (const [lat, lon] of points) {
+      const dLat = cell, dLon = lonCell(Math.min(Math.abs(lat) + cell, 85));
+      for (let a = Math.floor((lat - dLat) / D) * D; a <= lat + dLat; a += D)
+        for (let o = Math.floor((lon - dLon) / D) * D; o <= lon + dLon; o += D) if (idx.tiles[`${a}_${o}`]) keys.add(`${a}_${o}`);
+      const k = gk(Math.floor(lat / cell), Math.floor(lon / lc));
+      (grid.get(k) || grid.set(k, []).get(k)).push([lat, lon]);
+    }
+    const out = [];
+    for (const rows of await Promise.all([...keys].map(loadTile))) {
+      for (const [id, lat, lon, ts, tags] of rows) {
+        const ga = Math.floor(lat / cell), go = Math.floor(lon / lc);
+        let near = false;
+        for (let i = -1; i <= 1 && !near; i++) for (let j = -1; j <= 1 && !near; j++)
+          for (const p of grid.get(gk(ga + i, go + j)) || []) if (hav(p, [lat, lon]) <= radiusM) { near = true; break; }
+        if (near) out.push({ id, lat, lon, tags, updated: ts });
+      }
+    }
+    return out;
+  }
+  // The same search against the live Overpass servers, used only when data/osm/ is missing.
+  async function listingsLive(points, radiusM, onPart) {
+    const chunks = [];
+    for (let i = 0; i === 0 || i < points.length - 1; i += 59) chunks.push(points.slice(i, i + 60));
+    const seen = new Map();
+    for (let i = 0; i < chunks.length; i++) {
+      onPart(i + 1, chunks.length);
+      const j = await overpass(overpassQuery(chunks[i], radiusM));
+      j.elements.forEach((el) => seen.set(el.type + "/" + el.id, el));
+    }
+    return [...seen.entries()].map(([id, el]) => ({ id, lat: el.lat ?? el.center?.lat, lon: el.lon ?? el.center?.lon, tags: el.tags || {}, updated: el.timestamp }))
+      .filter((v) => v.lat != null);
+  }
+  async function findListings(points, radiusM) {
+    const idx = await loadOsmIndex();
+    if (idx) return listingsNear(idx, points, radiusM);
+    return listingsLive(points, radiusM, (i, n) => status(n > 1 ? `Searching for vendors… section ${i} of ${n}` : "Searching for vendors…"));
+  }
   function classify(t) {
     const n = (t.name || "") + " " + (t.brand || "");
     if (/towing|wrecker/i.test(n)) return "tow";
@@ -1650,7 +1709,7 @@ nwr["name"~"towing|wrecker",i]${A};
     const go = $("go"); go.disabled = true;
     const radiusM = +$("radius").value * MI;
     try {
-      layer.clearLayers(); markers.clear();
+      layer.clearLayers(); vendorPins.clearLayers(); markers.clear();
       if (mode === "route") {
         status("Finding places…");
         const a = await geocode($("from").value);
@@ -1662,30 +1721,21 @@ nwr["name"~"towing|wrecker",i]${A};
         const fine = thin(r.pts, cum, 300), fineCum = cumulative(fine);
         const coarse = thin(r.pts, cum, 3000);
         drawRoute(r.pts, a, b);
-        const chunks = [];
-        for (let i = 0; i < coarse.length - 1; i += 59) chunks.push(coarse.slice(i, i + 60));
-        const seen = new Map();
-        for (let i = 0; i < chunks.length; i++) {
-          status(`Searching for vendors… section ${i + 1} of ${chunks.length}`);
-          const j = await overpass(overpassQuery(chunks[i], radiusM));
-          j.elements.forEach((el) => seen.set(el.type + "/" + el.id, el));
-        }
-        results = [...seen.entries()].map(([id, el]) => {
-          const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
-          const pl = placeOnRoute([lat, lon], fine, fineCum);
-          return { id, cat: classify(el.tags || {}), name: el.tags?.name, lat, lon, tags: el.tags || {}, mile: pl.along / MI, off: pl.d / MI, updated: el.timestamp };
-        }).filter((v) => v.lat != null && v.off <= radiusM / MI * 1.05);
+        status("Searching for vendors…");
+        // Route points are about 3 km apart, so search a little wider and trim to the exact width below.
+        const found = await findListings(coarse, radiusM + 3000);
+        results = found.map((v) => {
+          const pl = placeOnRoute([v.lat, v.lon], fine, fineCum);
+          return { ...v, cat: classify(v.tags), name: v.tags.name, mile: pl.along / MI, off: pl.d / MI };
+        }).filter((v) => v.off <= radiusM / MI * 1.05);
         routeInfo = { from: a.label, to: b.label, miles: r.meters / MI, hours: r.seconds / 3600 };
       } else {
         status("Finding the truck's location…");
         const s = await geocode($("spot").value || "");
         drawSpot(s, radiusM);
         status("Searching for vendors…");
-        const j = await overpass(overpassQuery([[s.lat, s.lon]], radiusM));
-        results = j.elements.map((el) => {
-          const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
-          return { id: el.type + "/" + el.id, cat: classify(el.tags || {}), name: el.tags?.name, lat, lon, tags: el.tags || {}, mile: hav([s.lat, s.lon], [lat, lon]) / MI, off: null, updated: el.timestamp };
-        }).filter((v) => v.lat != null);
+        const found = await findListings([[s.lat, s.lon]], radiusM);
+        results = found.map((v) => ({ ...v, cat: classify(v.tags), name: v.tags.name, mile: hav([s.lat, s.lon], [v.lat, v.lon]) / MI, off: null }));
         routeInfo = { spot: s.label, at: [s.lat, s.lon] };
       }
       status(results.length ? "" : "No listings found. Try a wider search, or check the map for places OpenStreetMap may be missing.");
@@ -1752,18 +1802,23 @@ nwr["name"~"towing|wrecker",i]${A};
     else if (routeInfo) s.innerHTML = `<span><b>${esc(routeInfo.from)}</b> to <b>${esc(routeInfo.to)}</b></span><span><b>${routeInfo.miles.toFixed(0)}</b> mi</span>${routeInfo.hours != null ? `<span><b>${Math.floor(routeInfo.hours)}h ${Math.round(routeInfo.hours % 1 * 60)}m</b> car time</span>` : ""}<span><b>${shown.length}</b> of ${results.length} listings</span>`;
 
     // markers
-    markers.forEach((m) => layer.removeLayer(m)); markers.clear();
-    shown.forEach((v) => {
+    vendorPins.clearLayers(); markers.clear();
+    const pins = shown.map((v) => {
       const c = catById[v.cat];
-      const m = L.marker([v.lat, v.lon], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:var(--c-${c.id})"><span>${c.letter}</span></div>`, iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -24] }), title: v.name || c.label });
+      const m = L.marker([v.lat, v.lon], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:var(--c-${c.id})"><span>${c.letter}</span></div>`, iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -24] }) });
       const ph = phones(v.tags);
       m.bindPopup(`<b>${esc(v.name || "Unnamed " + c.label.toLowerCase())}</b><br>${esc(c.label)}${ph[0] ? `<br><a href="${telHref(ph[0])}">${esc(ph[0])}</a>` : ""}`);
       m.on("click", () => highlight(v.id, true));
-      m.addTo(layer); markers.set(v.id, m);
+      markers.set(v.id, m);
+      return m;
     });
+    vendorPins.addLayers(pins);
 
     const unit = routeInfo?.spot ? "mi away" : "mile";
-    $("list").innerHTML = shown.length ? shown.map((v) => card(v, unit)).join("") :
+    // The list shows the nearest 300; every match is still on the map.
+    const LIST_MAX = 300;
+    $("list").innerHTML = shown.length ? shown.slice(0, LIST_MAX).map((v) => card(v, unit)).join("") +
+        (shown.length > LIST_MAX ? `<li class="empty">Showing the nearest ${LIST_MAX} of ${shown.length}. All of them are on the map; use the filters above to narrow the list.</li>` : "") :
       (results.length ? `<li class="empty">No listings match these filters.</li>` : "");
     if (fit === true && shown.length && routeInfo?.spot) map.fitBounds(L.latLngBounds([routeInfo.at, ...shown.map((v) => [v.lat, v.lon])]).pad(0.15), { maxZoom: 15 });
   }
@@ -1816,8 +1871,10 @@ nwr["name"~"towing|wrecker",i]${A};
     if (e.target.closest("a")) return;
     const li = e.target.closest(".card"); if (!li) return;
     const v = results.find((r) => r.id === li.dataset.id); if (!v) return;
-    highlight(v.id); map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12));
-    markers.get(v.id)?.openPopup();
+    highlight(v.id);
+    const m = markers.get(v.id);
+    if (m && vendorPins.zoomToShowLayer) { map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12), { animate: false }); vendorPins.zoomToShowLayer(m, () => m.openPopup()); }
+    else { map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12)); m?.openPopup(); }
   });
 
 })();
