@@ -789,7 +789,6 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .card h3 { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.25; min-width: 0; overflow-wrap: anywhere; }
 .meta { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.pill.demo { background: var(--orange); color: var(--navy); padding: 1px 6px; border-radius: 3px; }
 .pill.h24 { color: var(--accent); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; grid-column: 2; }
 .call { font: 700 .95rem var(--font-mono); background: var(--action); color: var(--action-fg); text-decoration: none; padding: 6px 10px; border-radius: var(--radius); user-select: all; }
@@ -875,8 +874,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         </div>
 
         <div id="route-fields" class="row">
-          <label class="f">From<input type="text" id="from" placeholder="City, address, or 41.2375, -95.8780" value="Chicago, IL"></label>
-          <label class="f">To<input type="text" id="to" placeholder="City, address, or 41.2375, -95.8780" value="Indianapolis, IN"></label>
+          <label class="f">From<input type="text" id="from" placeholder="City, address, or 41.2375, -95.8780"></label>
+          <label class="f">To<input type="text" id="to" placeholder="City, address, or 41.2375, -95.8780"></label>
         </div>
         <div id="spot-fields" class="row" hidden>
           <label class="f">Truck location<input type="text" id="spot" placeholder="Address, town, or (41.2375, -95.8780)"></label>
@@ -900,10 +899,6 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         </fieldset>
         <div class="status" id="status" role="status" aria-live="polite"></div>
       </form>
-
-      <div class="section" id="demo-banner">
-        <div class="notice"><strong>Demo: these businesses are made up.</strong>The list below shows how results look. Press Find vendors to search real OpenStreetMap listings.</div>
-      </div>
 
       <div class="section" id="results-head">
         <div class="summary" id="summary"></div>
@@ -945,7 +940,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
   // ---------- state ----------
   let mode = "route";
-  let results = [];      // {id, cat, name, lat, lon, tags, mile, off, demo, updated}
+  let results = [];      // {id, cat, name, lat, lon, tags, mile, off, updated}
   let routeInfo = null;  // {miles, hours, from, to} or {spot}
   let markers = new Map();
 
@@ -1335,7 +1330,6 @@ nwr["name"~"towing|wrecker",i]${A};
         }).filter((v) => v.lat != null);
         routeInfo = { spot: s.label, at: [s.lat, s.lon] };
       }
-      $("demo-banner").hidden = true;
       status(results.length ? "" : "No listings found. Try a wider search, or check the map for places OpenStreetMap may be missing.");
       render(true);
     } catch (err) {
@@ -1420,7 +1414,7 @@ nwr["name"~"towing|wrecker",i]${A};
     const c = catById[v.cat], t = v.tags, ph = phones(t), addr = address(t);
     const name = v.name || `Unnamed ${c.label.toLowerCase()}`;
     const updated = v.updated ? new Date(v.updated).toLocaleDateString("en-US", { year: "numeric", month: "short" }) : null;
-    const osmUrl = v.demo ? null : `https://www.openstreetmap.org/${v.id}`;
+    const osmUrl = `https://www.openstreetmap.org/${v.id}`;
     const dir = `https://www.google.com/maps/dir/?api=1&destination=${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
     const web = t.website || t["contact:website"];
     const copyText = [name, ph.join(" / "), addr, unit === "mile" ? `Route mile ${v.mile.toFixed(1)}` : `${v.mile.toFixed(1)} mi from truck`, `${v.lat.toFixed(5)}, ${v.lon.toFixed(5)}`].filter(Boolean).join("\n");
@@ -1429,7 +1423,6 @@ nwr["name"~"towing|wrecker",i]${A};
       <h3>${esc(name)}</h3>
       <div class="meta">
         <span class="pill"><span class="dot" style="background:var(--c-${c.id})"></span>${c.label}</span>
-        ${v.demo ? `<span class="pill demo">Demo</span>` : ""}
         ${is24(t) ? `<span class="pill h24">24/7</span>` : ""}
         ${v.off != null ? `<span>${v.off < 0.1 ? "On route" : v.off.toFixed(1) + " mi off route"}</span>` : ""}
         ${addr ? `<span>${esc(addr)}</span>` : ""}
@@ -1469,29 +1462,6 @@ nwr["name"~"towing|wrecker",i]${A};
     markers.get(v.id)?.openPopup();
   });
 
-  // ---------- demo (made-up businesses, 555-01xx numbers are reserved as fictional) ----------
-  function loadDemo() {
-    const pts = [[41.8781,-87.6298],[41.75,-87.56],[41.6,-87.42],[41.53,-87.33],[41.43,-87.33],[41.29,-87.42],[41.12,-87.33],[40.94,-87.17],[40.76,-87.13],[40.6,-87.02],[40.42,-86.86],[40.28,-86.68],[40.05,-86.47],[39.9,-86.3],[39.7684,-86.1581]];
-    const a = { lat: pts[0][0], lon: pts[0][1], label: "Chicago, IL" }, b = { lat: 39.7684, lon: -86.1581, label: "Indianapolis, IN" };
-    drawRoute(pts, a, b);
-    const cum = cumulative(pts);
-    const fake = [
-      ["repair", "Example Diesel & Trailer Repair", 41.545, -87.35, "(555) 010-0142", "24/7"],
-      ["tires", "Sample Commercial Tire", 41.30, -87.40, "(555) 010-0177", "Mo-Fr 07:00-18:00"],
-      ["fuel", "Demo Travel Plaza", 40.945, -87.15, "(555) 010-0118", "24/7"],
-      ["tow", "Placeholder Heavy Towing & Wrecker", 40.74, -87.10, "(555) 010-0163", "24/7"],
-      ["repair", "Example Fleet Service Center", 40.43, -86.89, "(555) 010-0125", "Mo-Sa 06:00-22:00"],
-      ["tires", "Sample Road Tire Service", 40.06, -86.44, "", ""],
-      ["dealer", "Demo Truck Sales & Service", 39.86, -86.27, "(555) 010-0190", "Mo-Fr 07:00-19:00"],
-    ];
-    results = fake.map(([cat, name, lat, lon, phone, hours], i) => {
-      const pl = placeOnRoute([lat, lon], pts, cum);
-      return { id: "demo/" + i, demo: true, cat, name, lat, lon, tags: { phone, opening_hours: hours }, mile: pl.along / MI, off: pl.d / MI };
-    });
-    routeInfo = { from: "Chicago, IL", to: "Indianapolis, IN", miles: cum[cum.length - 1] / MI, hours: null };
-    render();
-  }
-  loadDemo();
 })();
 </script>
 </body>
