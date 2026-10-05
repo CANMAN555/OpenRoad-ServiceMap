@@ -1284,9 +1284,9 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
         d.stores.forEach((s) => {
           // Brands listed first sit on top where two share a spot (e.g. Freightliner ExpressPoint inside a Love's).
-          const m = L.marker([s.lat, s.lon], { icon, title: `${b.label}: ${s.name}`, riseOnHover: true, zIndexOffset: b.z });
-          m.bindPopup(() => b.popup(s, checked), { maxWidth: 290, autoPan: false });
-          m.on("mouseover", () => m.openPopup());
+          // The popup opens only when the pin is clicked or tapped.
+          const m = L.marker([s.lat, s.lon], { icon, riseOnHover: true, zIndexOffset: b.z });
+          m.bindPopup(() => b.popup(s, checked), { maxWidth: 290 });
           group.addLayer(m);
         });
         group.addTo(map);
