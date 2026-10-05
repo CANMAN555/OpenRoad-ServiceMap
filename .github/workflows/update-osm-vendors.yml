@@ -1,0 +1,62 @@
+name: Update OpenStreetMap vendor listings
+
+# Downloads the OpenStreetMap extracts for the U.S., Canada and Mexico from Geofabrik, keeps only
+# truck repair, tire, towing, truck stop and dealer listings, and writes them to data/osm/ in
+# 2-degree tiles. The site searches these files in the browser, so searches never wait on a
+# public server and work at any radius.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  push:
+    branches: [main]
+    paths:
+      - scripts/build-osm-vendors.py
+      - .github/workflows/update-osm-vendors.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-osm-vendors
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install osmium
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q osmium-tool
+          python3 -m pip install --quiet osmium
+      - name: Download and filter each region
+        run: |
+          mkdir -p work
+          for r in us-midwest us-northeast us-pacific us-south us-west canada mexico; do
+            echo "::group::$r"
+            curl -fsSL --retry 3 -o work/$r.osm.pbf "https://download.geofabrik.de/north-america/$r-latest.osm.pbf"
+            ls -lh work/$r.osm.pbf
+            # osmium wildcards are case-sensitive, so "towing" and "wrecker" are listed in both cases;
+            # the build script then applies the exact rules.
+            osmium tags-filter -O -o work/$r-vendors.osm.pbf work/$r.osm.pbf \
+              'nwr/shop=truck_repair,tyres,truck,car_repair' 'nwr/amenity=fuel' \
+              'nwr/name=*owing' 'nwr/name=*OWING' 'nwr/name=*recker' 'nwr/name=*RECKER'
+            rm work/$r.osm.pbf
+            ls -lh work/$r-vendors.osm.pbf
+            echo "::endgroup::"
+          done
+      - name: Build tiles
+        run: python3 scripts/build-osm-vendors.py work/*-vendors.osm.pbf
+      - name: Commit if changed
+        run: |
+          git add -A data/osm
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update OpenStreetMap vendor listings"
+          git pull --rebase origin main
+          git push
