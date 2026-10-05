@@ -689,6 +689,10 @@
   --ta: #D2232A;            /* TA / Petro location pins */
   --ftl: #ffffff;           /* Freightliner location pins (white, navy letters) */
   --volvo: #00838F;         /* Volvo Trucks location pins */
+  --boss: #1F4E9C;          /* Boss Truck Shops pins */
+  --utility: #6A1B9A;       /* Utility Trailer dealer pins */
+  --prestige: #2E7D32;      /* Prestige Trailers dealer pins */
+  --timpte: #E66C2A;        /* Timpte pins (Timpte orange) */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -966,7 +970,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   ]).addTo(map);
   const layer = L.layerGroup().addTo(map);
 
-  // ---------- Brand locations: Love's, TA, Freightliner, Volvo ----------
+  // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte ----------
   // Each brand's data/<key>.json is refreshed weekly from that company's own locator by a GitHub Action.
   const brandIcon = (b) =>
     L.divIcon({ className: "", html: `<div class="pin brand${b.letter.length > 1 ? " two" : ""}" style="--b:var(${b.color});--bt:${b.text}"><span>${b.letter}</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
@@ -1080,6 +1084,78 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     </div>`;
   }
 
+  // ["M-F: 5 AM - 11 PM", "Sat & Sun: Sat: 7 AM - 11 PM Sun: CLOSED"] -> [["Mon–Fri","5 AM - 11 PM"],["Sat","7 AM - 11 PM"],["Sun","Closed"]]
+  function bossHours(lines) {
+    const rows = [];
+    (lines || []).forEach((h) => {
+      const i = h.indexOf(":");
+      if (i < 0) return rows.push(["Hours", h]);
+      const label = tidyHours(h.slice(0, i)).replace(/\s*&\s*/g, "–");
+      const v = h.slice(i + 1).replace(/[<>]\/?br\/?[<>]/gi, " ").replace(/^\s*sat\s*&\s*sun:\s*/i, "").trim();
+      const split = /^Sat(?:urday)?:\s*(.*?)\s*Sun(?:day)?:\s*(.*)$/i.exec(v);
+      if (split) rows.push(["Sat", split[1]], ["Sun", split[2]]);
+      else rows.push([label, v]);
+    });
+    return rows.map(([k, v]) => [k, v.replace(/\bclosed\b/gi, "Closed")]);
+  }
+  function bossPopup(s, checked) {
+    const g = Object.fromEntries((s.services || []).map((x) => [x.name.replace(/\*$/, "").toUpperCase(), x.items]));
+    const tires = g.TIRES || [];
+    const repairs = (s.services || []).map((x) => x.name.replace(/\*$/, "")).filter((n) => !/^(TIRES|RETREADS|ADDITIONAL SERVICES)$/i.test(n))
+      .map((n) => n.toLowerCase().replace(/\b(pm|rv|dot)\b/g, (w) => w.toUpperCase()).replace(/^./, (c) => c.toUpperCase()));
+    const where = [s.exit, s.locatedAt && `at ${s.locatedAt}`].filter(Boolean).join(" · ");
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      ${where ? `<div class="t">${esc(where)}</div>` : ""}
+      <div class="caps">
+        ${cap(repairs.length > 0, "Truck repair", [s.bays && `${s.bays} bays`, repairs.slice(0, 8).join(", ")].filter(Boolean).join(" · "), "Yes", "Call to check")}
+        ${cap(tires.length > 0, "Tire service", tires.length ? "New: " + tires.join(", ") + ((g.RETREADS || []).length ? ". Retreads: " + g.RETREADS.join(", ") : "") : "", "Yes", "Not listed")}
+        ${cap(Number(s.roadTrucks) > 0, "Roadside trucks", Number(s.roadTrucks) > 0 ? `${s.roadTrucks} road service trucks at this shop` : "", "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(bossHours(s.hours))}
+      ${s.address ? addrRow(s) : ""}
+      ${phoneRow("Shop", s.phone)}
+      ${phoneRow("Boss 24-hour call center", "(888) 595-2677")}
+      ${linkRow(s.url, "Location page on bosstruckshops.com")}
+      ${srcRow("bosstruckshops.com", checked)}
+    </div>`;
+  }
+
+  function utilityPopup(s, checked) {
+    const deps = s.departments || [];
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">Utility Trailer dealer · ${esc(deps.join(", ") || "Departments not listed")}</div>
+      <div class="caps">
+        ${cap(s.service, "Trailer repair", s.mobile ? "Mobile service" : "", "Yes", "Not listed")}
+        ${cap(s.parts, "Trailer parts", "", "Yes", "Not listed")}
+        ${cap(s.cargobull, "Cargobull service", "", "Yes", "Not listed")}
+        ${cap(s.sales, "Trailer sales", "", "Yes", "Not listed")}
+      </div>
+      <div class="hrs"><div>Hours not listed. Call to confirm.</div></div>
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.url, "Dealer page on utilitytrailer.com")}
+      ${srcRow("Utility Trailer's dealer directory", checked)}
+    </div>`;
+  }
+
+  function prestigePopup(s, checked) {
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">Prestige Trailers dealer (flatbed and hopper trailers)</div>
+      <div class="note">Prestige's dealer list does not say which dealers do repairs. Call to ask about service and parts.</div>
+      <div class="hrs"><div>Hours not listed. Call to confirm.</div></div>
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${s.servicePhone ? phoneRow("Service", s.servicePhone) : ""}
+      ${phoneRow("Toll free", s.tollFree)}
+      ${linkRow(s.website, "Dealer website")}
+      ${linkRow("https://prestigetrailers.com/shopping-tools-find-dealer/", "Prestige dealer locator")}
+      ${srcRow("Prestige Trailers' dealer locator", checked)}
+    </div>`;
+  }
+
   function lovesPopup(s, checked) {
     const title = s.type === "Truck Service" ? `Love's Truck Care / Speedco: ${s.name}` : `Love's ${s.type}: ${s.name}`;
     const where = [s.highway, s.exit && `Exit ${s.exit}`].filter(Boolean).join(", ");
@@ -1118,6 +1194,9 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     { key: "ta", label: "TA / Petro", letter: "TA", color: "--ta", text: "#fff", popup: taPopup, z: 200 },
     { key: "freightliner", label: "Freightliner", letter: "FL", color: "--ftl", text: "#0B1F33", popup: freightlinerPopup, z: 100 },
     { key: "volvo", label: "Volvo Trucks", letter: "V", color: "--volvo", text: "#fff", popup: volvoPopup, z: 0 },
+    { key: "boss", label: "Boss Truck Shops", letter: "B", color: "--boss", text: "#fff", popup: bossPopup, z: 250 },
+    { key: "utility", label: "Utility Trailer", letter: "U", color: "--utility", text: "#fff", popup: utilityPopup, z: -100 },
+    { key: "prestige", label: "Prestige Trailers", letter: "P", color: "--prestige", text: "#fff", popup: prestigePopup, z: -200 },
   ];
   const brandCtl = L.control({ position: "topright" });
   brandCtl.onAdd = () => {
