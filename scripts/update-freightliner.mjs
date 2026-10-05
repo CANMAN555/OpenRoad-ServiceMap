@@ -8,7 +8,7 @@ const API = "https://www.freightliner.com/umbraco/backoffice/dealers/geo-search?
 const CAP = 1000; // the locator returns at most this many results per box
 const DAYS = [["monday", "Mon"], ["tuesday", "Tue"], ["wednesday", "Wed"], ["thursday", "Thu"], ["friday", "Fri"], ["saturday", "Sat"], ["sunday", "Sun"]];
 
-const titleCase = (s) => clean(s) && clean(s).toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/\b(Llc|Inc|Usa|Of|And|Ii|Iii)\b/g, (w) => ({ Llc: "LLC", Inc: "Inc", Usa: "USA", Of: "of", And: "and", Ii: "II", Iii: "III" }[w])).replace(/'S\b/g, "'s");
+const titleCase = (s) => clean(s) && clean(s).toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase()).replace(/\b(Llc|Inc|Usa|Of|And|Ii|Iii|Dot|Cat|Rv|Dlr|Svc)\b/g, (w) => ({ Llc: "LLC", Inc: "Inc", Usa: "USA", Of: "of", And: "and", Ii: "II", Iii: "III", Dot: "DOT", Cat: "CAT", Rv: "RV", Dlr: "Dealer", Svc: "Service" }[w])).replace(/'S\b/g, "'s");
 
 // Split any box that hits the result cap into four until every box is under it.
 async function search(box, depth = 0) {

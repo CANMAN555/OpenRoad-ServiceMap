@@ -1,0 +1,36 @@
+name: Build city suggestions list
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/build-places.mjs
+      - .github/workflows/build-places.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download Census files
+        run: |
+          curl -fsSL --retry 4 -o gaz.zip https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/2024_Gaz_place_national.zip
+          unzip -p gaz.zip '*.txt' > gazetteer.txt
+          curl -fsSL --retry 4 -o population.csv https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/cities/totals/sub-est2024.csv
+      - run: node scripts/build-places.mjs
+      - name: Commit if changed
+        run: |
+          git add data/places.json
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Build city suggestions list from Census data"
+          git pull --rebase origin main
+          git push

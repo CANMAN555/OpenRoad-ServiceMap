@@ -686,6 +686,9 @@
   --offwhite: #F4F6F8;      /* Off White: backgrounds */
   --orange: #FF6B00;        /* Safety Orange: actions and highlights */
   --loves: #FFC72C;         /* Love's location pins */
+  --ta: #D2232A;            /* TA / Petro location pins */
+  --ftl: #ffffff;           /* Freightliner location pins (white, navy letters) */
+  --volvo: #00838F;         /* Volvo Trucks location pins */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -752,6 +755,14 @@ a { color: var(--accent); }
 .tabs button { font: 600 .9rem var(--font-body); padding: 9px 8px; border: 0; background: transparent; color: var(--fg); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--sign); color: var(--sign-fg); }
 
+/* place suggestions under the From / To / Truck location boxes */
+.ac { position: relative; }
+.ac-list { position: absolute; z-index: 2000; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: 4px 0; list-style: none; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 6px 18px rgba(0,0,0,.25); max-height: 320px; overflow-y: auto; text-transform: none; letter-spacing: normal; }
+.ac-list[hidden] { display: none !important; }
+.ac-list li { padding: 8px 11px; cursor: pointer; font: 400 .95rem var(--font-body); color: var(--fg); display: flex; justify-content: space-between; gap: 8px; }
+.ac-list li .sub { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.ac-list li[aria-selected="true"], .ac-list li:hover { background: var(--amber-bg); }
+.ac-list li b { font-weight: 800; }
 label.f { display: grid; gap: 4px; font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 11px; width: 100%; min-width: 0; }
 .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
@@ -786,7 +797,6 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .card h3 { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.25; min-width: 0; overflow-wrap: anywhere; }
 .meta { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
 .pill { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-.pill.demo { background: var(--orange); color: var(--navy); padding: 1px 6px; border-radius: 3px; }
 .pill.h24 { color: var(--accent); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; grid-column: 2; }
 .call { font: 700 .95rem var(--font-mono); background: var(--action); color: var(--action-fg); text-decoration: none; padding: 6px 10px; border-radius: var(--radius); user-select: all; }
@@ -802,15 +812,17 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .truck-pin { width: 40px; height: 30px; border-radius: 6px; background: var(--navy); border: 2px solid var(--orange); display: grid; place-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 .endpoint { width: 30px; height: 30px; border-radius: 4px; background: var(--navy); color: #fff; border: 2px solid #fff; display: grid; place-items: center; font: 800 13px var(--font-body); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 /* Love's locations layer */
-.pin.loves { width: 22px; height: 22px; background: var(--loves); border-color: var(--navy); }
-.pin.loves span { color: var(--navy); font-size: 10px; }
-.loves-cluster { width: 34px; height: 34px; border-radius: 50%; background: var(--loves); border: 2px solid var(--navy); color: var(--navy);
+/* Brand location layers (Love's, TA, Freightliner, Volvo): --b is the pin color, --bt the letter color */
+.pin.brand { width: 22px; height: 22px; background: var(--b); border-color: var(--navy); }
+.pin.brand span { color: var(--bt); font-size: 10px; letter-spacing: -.3px; }
+.pin.brand.two span { font-size: 8.5px; }
+.brand-cluster { width: 34px; height: 34px; border-radius: 50%; background: var(--b); border: 2px solid var(--navy); color: var(--bt);
   display: grid; place-items: center; font: 800 12px var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.45); }
 .leaflet-cluster-anim .leaflet-marker-icon, .leaflet-cluster-anim .leaflet-marker-shadow { transition: transform .3s ease-out, opacity .3s ease-in; }
 @media (prefers-reduced-motion: reduce) { .leaflet-cluster-anim .leaflet-marker-icon { transition: none; } }
 .lv h4 { margin: 0 0 2px; font-size: 14px; }
 .lv .t { color: var(--slate); font-size: 12px; margin-bottom: 6px; }
-.lv .row { margin: 3px 0; }
+.lv .row { margin: 3px 0; display: block; }
 .lv .ph { font: 700 13px var(--font-mono); }
 .lv .badge { display: inline-block; background: var(--orange); color: var(--navy); font-weight: 800; font-size: 11px; padding: 1px 6px; border-radius: 3px; margin-top: 4px; }
 .lv .caps { display: grid; gap: 4px; margin: 4px 0 2px; }
@@ -825,7 +837,10 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .lv .hrs b { color: var(--navy); }
 .lv .src { color: var(--slate); font-size: 11px; margin-top: 6px; }
 .layer-toggle { background: var(--panel); color: var(--fg); padding: 6px 10px; border-radius: var(--radius); font: 700 13px var(--font-body); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.layer-toggle { display: grid; gap: 3px; }
 .layer-toggle label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.layer-toggle label.off { color: var(--muted); cursor: default; }
+.lv .note { font-size: 12px; color: var(--slate); margin: 2px 0 4px; }
 .layer-toggle input { accent-color: var(--navy); margin: 0; }
 .leaflet-popup-content { font-family: var(--font-body); font-size: 13px; }
 .leaflet-container { font-family: var(--font-body); }
@@ -867,8 +882,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         </div>
 
         <div id="route-fields" class="row">
-          <label class="f">From<input type="text" id="from" placeholder="City, address, or 41.2375, -95.8780" value="Chicago, IL"></label>
-          <label class="f">To<input type="text" id="to" placeholder="City, address, or 41.2375, -95.8780" value="Indianapolis, IN"></label>
+          <label class="f">From<input type="text" id="from" placeholder="City, address, or 41.2375, -95.8780"></label>
+          <label class="f">To<input type="text" id="to" placeholder="City, address, or 41.2375, -95.8780"></label>
         </div>
         <div id="spot-fields" class="row" hidden>
           <label class="f">Truck location<input type="text" id="spot" placeholder="Address, town, or (41.2375, -95.8780)"></label>
@@ -893,10 +908,6 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         <div class="status" id="status" role="status" aria-live="polite"></div>
       </form>
 
-      <div class="section" id="demo-banner">
-        <div class="notice"><strong>Demo: these businesses are made up.</strong>The list below shows how results look. Press Find vendors to search real OpenStreetMap listings.</div>
-      </div>
-
       <div class="section" id="results-head">
         <div class="summary" id="summary"></div>
         <div class="tools">
@@ -908,7 +919,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
       <div class="foot">
         <div class="notice"><strong>Always call ahead.</strong>Listings come from OpenStreetMap, which volunteers maintain. A shop can be missing, closed, or have an old phone number. Confirm hours, truck capacity and payment before you dispatch. Routes are standard driving routes and do not account for truck height, weight or hazmat restrictions.</div>
-        <p>Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>, ODbL. Routing by <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a>. Search by <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>. Geocoding by <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>.</p>
+        <p>Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>, ODbL. Routing by <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a>. Search by <a href="https://overpass-api.de/" target="_blank" rel="noopener">Overpass API</a>. Geocoding by <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>. City suggestions from the <a href="https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html" target="_blank" rel="noopener">U.S. Census Bureau</a>.</p>
         <p>Know a shop that's missing or wrong? Use the "Fix this listing" link on any result, or add it at <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">openstreetmap.org</a>, and every driver using this site gets the fix.</p>
       </div>
     </div>
@@ -937,7 +948,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
   // ---------- state ----------
   let mode = "route";
-  let results = [];      // {id, cat, name, lat, lon, tags, mile, off, demo, updated}
+  let results = [];      // {id, cat, name, lat, lon, tags, mile, off, updated}
   let routeInfo = null;  // {miles, hours, from, to} or {spot}
   let markers = new Map();
 
@@ -955,14 +966,17 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   ]).addTo(map);
   const layer = L.layerGroup().addTo(map);
 
-  // ---------- Love's locations (data/loves.json, refreshed weekly from Love's own store locator) ----------
-  const lovesLayer = L.markerClusterGroup
-    ? L.markerClusterGroup({
-        disableClusteringAtZoom: 9, maxClusterRadius: 45, showCoverageOnHover: false, spiderfyOnMaxZoom: false,
-        iconCreateFunction: (c) => L.divIcon({ className: "", html: `<div class="loves-cluster">${c.getChildCount()}</div>`, iconSize: [34, 34] }),
-      })
-    : L.layerGroup();
-  const lovesIcon = L.divIcon({ className: "", html: `<div class="pin loves"><span>L</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
+  // ---------- Brand locations: Love's, TA, Freightliner, Volvo ----------
+  // Each brand's data/<key>.json is refreshed weekly from that company's own locator by a GitHub Action.
+  const brandIcon = (b) =>
+    L.divIcon({ className: "", html: `<div class="pin brand${b.letter.length > 1 ? " two" : ""}" style="--b:var(${b.color});--bt:${b.text}"><span>${b.letter}</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
+  const brandGroup = (b) =>
+    L.markerClusterGroup
+      ? L.markerClusterGroup({
+          disableClusteringAtZoom: 9, maxClusterRadius: 45, showCoverageOnHover: false, spiderfyOnMaxZoom: false,
+          iconCreateFunction: (c) => L.divIcon({ className: "", html: `<div class="brand-cluster" style="--b:var(${b.color});--bt:${b.text}">${c.getChildCount()}</div>`, iconSize: [34, 34] }),
+        })
+      : L.layerGroup();
   const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const tidyHours = (h) =>
     h ? h.replace(/open 24[- ]hours/i, "Open 24 hours").replace(/\bM-F\b/g, "Mon–Fri").replace(/\bS-S\b/g, "Sat–Sun").replace(/\s*\/\s*/g, "; ") : h;
@@ -978,6 +992,94 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     });
     return out.map((r) => `${r.start === r.end ? r.start : r.start + "–" + r.end} ${r.hours}`).join("; ");
   }
+  // One yes/no line in a location popup, with optional detail underneath.
+  const cap = (ok, label, detail, yes = "Yes", no = "No") =>
+    `<div class="cap ${ok ? "y" : "n"}"><span class="ic" aria-hidden="true">${ok ? "✓" : "✕"}</span><b>${esc(label)}:</b> ${ok ? esc(yes) : esc(no)}${detail ? `<small>${esc(detail)}</small>` : ""}</div>`;
+  const hoursBlock = (rows, extra = "") =>
+    `<div class="hrs">${rows.length ? rows.map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join("") : "<div>Hours not listed. Call to confirm.</div>"}${extra}</div>`;
+  const phoneRow = (label, p) => (p ? `<div class="row">${label ? `<b>${esc(label)}:</b> ` : ""}<a class="ph" href="${telHref(p)}">${esc(p)}</a></div>` : "");
+  const addrRow = (s) => `<div class="row">${esc(s.address)}<br>${esc(s.city)}, ${esc(s.state)} ${esc(s.zip || "")}</div>`;
+  const linkRow = (url, text) => (url ? `<div class="row"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a></div>` : "");
+  const srcRow = (who, checked) => `<div class="src">From ${esc(who)}, checked ${esc(checked)}. Call to confirm.</div>`;
+
+  function taPopup(s, checked) {
+    const shop = s.shop || {};
+    const diesel = (s.fuel || []).filter((f) => /diesel|ulsd/i.test(f) && !/^auto diesel$/i.test(f));
+    const tires = (shop.services || []).filter((n) => /tire/i.test(n));
+    const eshop2 = shop.eshop === "eShop 2.0";
+    const eshopDetail = eshop2
+      ? "Work orders go through TA's new eShop 2.0 portal"
+      : shop.eshop === "eShop" ? "Uses the original eShop" : shop.onSite || shop.phone ? "No eShop listed" : "No truck service here";
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">Store #${esc(s.id)}${s.highway ? " · " + esc(s.highway) : ""}</div>
+      <div class="caps">
+        ${cap(diesel.length > 0, "Truck diesel", diesel.length ? diesel.concat((s.fuel || []).filter((f) => /^DEF$/i.test(f))).join(", ") : (s.fuel || []).length ? "Car fuel only" : "No fuel listed")}
+        ${cap(shop.onSite, "TA Truck Service shop", shop.onSite ? [shop.bays && `${shop.bays} bays`, (shop.services || []).filter((n) => !/tire/i.test(n)).join(", ")].filter(Boolean).join(" · ") : shop.phone ? "ta-petro.com lists a Truck Service phone here but no shop details" : "None listed", "Yes", shop.phone ? "Call to check" : "No")}
+        ${cap(tires.length > 0, "Tire service", tires.join(", "), "Yes", shop.onSite ? "Not listed" : "No")}
+        ${cap(eshop2, "eShop 2.0", eshopDetail)}
+      </div>
+      ${hoursBlock(shop.hours ? [["Truck Service", shop.hours.replace(/^Mon-Sun:?\s*/i, "Mon–Sun ")]] : [], (s.food || []).length ? `<div><b>Food:</b> ${esc(s.food.join(", "))}</div>` : "")}
+      ${addrRow(s)}
+      ${phoneRow("Store", s.phone)}
+      ${phoneRow("Truck Service", shop.phone)}
+      ${s.era ? `<div class="row"><b>ERA road service:</b> <a class="ph" href="tel:8008247467">${esc(s.era)}</a></div>` : ""}
+      ${linkRow(s.url, "Location page on ta-petro.com")}
+      ${srcRow("ta-petro.com", checked)}
+    </div>`;
+  }
+
+  function freightlinerPopup(s, checked) {
+    const kind = s.atLoves ? "Freightliner ExpressPoint at Love's Truck Care" : s.speedco ? "Freightliner ExpressPoint at Speedco" : `Freightliner ${s.auth || "dealer"}`.replace(/Freightliner Full Service$/, "Freightliner full-service dealer");
+    const svc = s.service;
+    const extras = (s.services || []).filter((n) => /oil|dot|align|trailer|reefer|cummins|cat |welding/i.test(n)).slice(0, 6);
+    const hrs = [["Service", dayRanges(s.hours && s.hours.service)], ["Parts", dayRanges(s.hours && s.hours.parts)]].filter(([, v]) => v);
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc(kind)}</div>
+      ${s.atLoves || s.speedco ? `<div class="note">ExpressPoint: light mechanical warranty repair, emergency roadside service and recall work for Freightliner trucks.</div>` : ""}
+      <div class="caps">
+        ${cap(svc, "Truck repair", svc ? extras.join(", ") || (s.departments || []).join(", ") : s.auth || "No service department listed")}
+        ${cap(s.tires, "Tire repair", "", "Yes", "Not listed")}
+        ${cap(s.roadside, "Road service", s.roadside24 ? "24-hour roadside repair" : s.roadside ? "Roadside / mobile repair" : "", "Yes", "Not listed")}
+        ${cap(s.towing, "Towing", "", "Yes", "Not listed")}
+        ${cap(s.eliteSupport, "Elite Support", s.eliteSupport ? "Freightliner's top-tier certified service" : "")}
+      </div>
+      ${hoursBlock(hrs)}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${phoneRow("After hours", s.afterHours)}
+      ${s.wrecker && s.wrecker !== s.phone ? phoneRow("Wrecker", s.wrecker) : ""}
+      ${linkRow(s.website, "Dealer website")}
+      ${linkRow("https://www.freightliner.com/dealer-search/", "Freightliner dealer locator")}
+      ${srcRow("Freightliner's dealer locator", checked)}
+    </div>`;
+  }
+
+  function volvoPopup(s, checked) {
+    const typeName = { "Full Line": "Volvo full-line dealer", Satellite: "Volvo satellite service location", "Parts & Service": "Volvo parts & service location", "Parts Only": "Volvo parts store (no service)", Associate: "Volvo associate dealer" }[s.type] || `Volvo ${s.type || "dealer"}`;
+    const hrs = [["Service", dayRanges(s.hours && s.hours.service)], ["Parts", dayRanges(s.hours && s.hours.parts)], ["On call", dayRanges(s.hours && s.hours.onCall)]].filter(([, v]) => v);
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc(typeName)}</div>
+      <div class="caps">
+        ${cap(s.service, "Truck repair", s.service ? (s.keyServices || []).filter((n) => !/uptime|road service|towing|tire/i.test(n)).join(", ") : "Parts only")}
+        ${cap(s.uptime, "Volvo Certified Uptime Center", "")}
+        ${cap(s.roadService, "Road service", "", "Yes", "Not listed")}
+        ${cap(s.towing, "Towing", "", "Yes", "Not listed")}
+        ${cap(s.tires, "Tire repair", "", "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(hrs)}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${s.servicePhone && s.servicePhone !== s.phone ? phoneRow("Service", s.servicePhone) : ""}
+      ${phoneRow("Toll free", s.tollFree)}
+      ${linkRow(s.website, "Dealer website")}
+      ${linkRow("https://www.volvotrucks.us/find-a-dealer/", "Volvo dealer locator")}
+      ${srcRow("Volvo Trucks' dealer locator", checked)}
+    </div>`;
+  }
+
   function lovesPopup(s, checked) {
     const title = s.type === "Truck Service" ? `Love's Truck Care / Speedco: ${s.name}` : `Love's ${s.type}: ${s.name}`;
     const where = [s.highway, s.exit && `Exit ${s.exit}`].filter(Boolean).join(", ");
@@ -991,8 +1093,6 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     const fuels = s.fuel || [];
     const truckDiesel = fuels.some((f) => /^(bio-)?diesel/i.test(f));
     const tires = (shop.services || []).some((n) => /tire/i.test(n));
-    const cap = (ok, label, detail) =>
-      `<div class="cap ${ok ? "y" : "n"}"><span class="ic" aria-hidden="true">${ok ? "✓" : "✕"}</span><b>${esc(label)}:</b> ${ok ? "Yes" : "No"}${detail ? `<small>${esc(detail)}</small>` : ""}</div>`;
     const food = (h.restaurants || []).map((r) => (r.hours ? `${r.name} (${r.hours.replace("Open ", "")})` : r.name)).join(", ");
     return `<div class="lv">
       <h4>${esc(title)}</h4>
@@ -1013,28 +1113,48 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       <div class="src">From Love's store locator, checked ${esc(checked)}. Call to confirm.</div>
     </div>`;
   }
-  fetch("data/loves.json")
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
-    .then((d) => {
-      const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-      d.stores.forEach((s) => {
-        const m = L.marker([s.lat, s.lon], { icon: lovesIcon, title: `Love's ${s.name}`, riseOnHover: true });
-        m.bindPopup(() => lovesPopup(s, checked), { maxWidth: 290, autoPan: false });
-        m.on("mouseover", () => m.openPopup());
-        lovesLayer.addLayer(m);
+  const BRANDS = [
+    { key: "loves", label: "Love's", letter: "L", color: "--loves", text: "#0B1F33", popup: lovesPopup, z: 300 },
+    { key: "ta", label: "TA / Petro", letter: "TA", color: "--ta", text: "#fff", popup: taPopup, z: 200 },
+    { key: "freightliner", label: "Freightliner", letter: "FL", color: "--ftl", text: "#0B1F33", popup: freightlinerPopup, z: 100 },
+    { key: "volvo", label: "Volvo Trucks", letter: "V", color: "--volvo", text: "#fff", popup: volvoPopup, z: 0 },
+  ];
+  const brandCtl = L.control({ position: "topright" });
+  brandCtl.onAdd = () => {
+    const div = L.DomUtil.create("div", "layer-toggle");
+    div.innerHTML = BRANDS.map((b) =>
+      `<label id="lt-${b.key}"><input type="checkbox" checked disabled><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span><span class="nm">${b.label}</span></label>`).join("");
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  };
+  brandCtl.addTo(map);
+  BRANDS.forEach((b) => {
+    const row = document.getElementById("lt-" + b.key);
+    const group = brandGroup(b), icon = brandIcon(b);
+    fetch(`data/${b.key}.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+      .then((d) => {
+        const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+        d.stores.forEach((s) => {
+          // Brands listed first sit on top where two share a spot (e.g. Freightliner ExpressPoint inside a Love's).
+          const m = L.marker([s.lat, s.lon], { icon, title: `${b.label}: ${s.name}`, riseOnHover: true, zIndexOffset: b.z });
+          m.bindPopup(() => b.popup(s, checked), { maxWidth: 290, autoPan: false });
+          m.on("mouseover", () => m.openPopup());
+          group.addLayer(m);
+        });
+        group.addTo(map);
+        row.querySelector(".nm").textContent = `${b.label} (${d.count})`;
+        const box = row.querySelector("input");
+        box.disabled = false;
+        box.addEventListener("change", (e) => (e.target.checked ? group.addTo(map) : map.removeLayer(group)));
+      })
+      .catch((e) => {
+        console.warn(`${b.label} locations unavailable:`, e.message);
+        row.classList.add("off");
+        row.querySelector("input").checked = false;
+        row.querySelector(".nm").textContent = `${b.label} (not available)`;
       });
-      lovesLayer.addTo(map);
-      const ctl = L.control({ position: "topright" });
-      ctl.onAdd = () => {
-        const div = L.DomUtil.create("div", "layer-toggle");
-        div.innerHTML = `<label><input type="checkbox" id="loves-toggle" checked><span class="dot" style="background:var(--loves);border:1px solid var(--navy)"></span>Love's (${d.count})</label>`;
-        L.DomEvent.disableClickPropagation(div);
-        div.querySelector("input").addEventListener("change", (e) => (e.target.checked ? lovesLayer.addTo(map) : map.removeLayer(lovesLayer)));
-        return div;
-      };
-      ctl.addTo(map);
-    })
-    .catch((e) => console.warn("Love's locations unavailable:", e.message));
+  });
 
   // ---------- category chips ----------
   $("cats").insertAdjacentHTML("beforeend", CATS.map((c) =>
@@ -1129,9 +1249,155 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     if (Math.abs(a) > 90 || Math.abs(b) > 180) return null;
     return { lat: a, lon: b };
   }
+  // ---------- place suggestions (data/places.json: every U.S. city, town and CDP, from Census files) ----------
+  const STATES = { AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware", DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", PR: "Puerto Rico", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming" };
+  const norm = (t) => t.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  // Edit distance with swapped letters counted once ("nebraksa" -> "nebraska" is 1).
+  function typoDistance(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      let rowMin = Infinity;
+      for (let j = 1; j <= b.length; j++) {
+        const c = a[i - 1] === b[j - 1] ? 0 : 1;
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+        rowMin = Math.min(rowMin, d[i][j]);
+      }
+      if (rowMin > max) return max + 1;
+    }
+    return d[a.length][b.length];
+  }
+  const stateList = Object.entries(STATES).map(([ab, name]) => ({ ab, name, n: norm(name), a: ab.toLowerCase() }));
+  // "ne", "neb", "nebraska", "nebraksa" -> "NE". Partial names only count when they are 3+ letters.
+  function matchState(t, partialOk) {
+    if (!t) return null;
+    const exact = stateList.find((s) => s.a === t || s.n === t);
+    if (exact) return exact.ab;
+    if (partialOk && t.length >= 3) {
+      const pre = stateList.filter((s) => s.n.startsWith(t));
+      if (pre.length === 1) return pre[0].ab;
+    }
+    if (t.length >= 5) {
+      const fuzzy = stateList.filter((s) => typoDistance(t, s.n, 2) <= (t.length >= 7 ? 2 : 1));
+      if (fuzzy.length === 1) return fuzzy[0].ab;
+    }
+    return null;
+  }
+  // Split "omaha nebraksa" / "Omaha, NE" / "kansas city mo" into a city part and a state.
+  function splitQuery(q) {
+    const t = norm(q);
+    const comma = q.lastIndexOf(",");
+    if (comma > 0) {
+      const st = matchState(norm(q.slice(comma + 1)), true);
+      if (st) return { city: norm(q.slice(0, comma)), st };
+    }
+    const words = t.split(" ");
+    for (const k of [2, 1]) {
+      if (words.length <= k) continue;
+      const st = matchState(words.slice(-k).join(" "), true);
+      if (st) return { city: words.slice(0, -k).join(" "), st };
+    }
+    return { city: t, st: null };
+  }
+  let places = null, placesLoading = null;
+  function loadPlaces() {
+    placesLoading ||= fetch("data/places.json")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+      .then((d) => { places = d.places.map(([name, st, lat, lon, pop]) => ({ name, st, lat, lon, pop, n: norm(name) })); })
+      .catch((e) => console.warn("City list unavailable:", e.message));
+    return placesLoading;
+  }
+  function suggest(q, limit = 8) {
+    const out = [];
+    if (!places || parseCoords(q)) return out;
+    const { city, st } = splitQuery(q);
+    if (!city) {
+      if (st) out.push({ state: st, label: STATES[st], sub: "State" });
+      return out;
+    }
+    const tier = (p) => (p.n === city ? 0 : p.n.startsWith(city) ? 1 : p.n.includes(" " + city) ? 2 : -1);
+    let hits = [];
+    for (const p of places) {
+      if (st && p.st !== st) continue;
+      const t = tier(p);
+      if (t >= 0) hits.push([t, p]);
+    }
+    if (hits.length < limit && city.length >= 5) {
+      const max = city.length >= 7 ? 2 : 1;
+      for (const p of places) {
+        if ((st && p.st !== st) || tier(p) >= 0) continue;
+        if (typoDistance(city, p.n.slice(0, city.length), max) <= max || typoDistance(city, p.n, max) <= max) hits.push([3, p]);
+        if (hits.length > 200) break;
+      }
+    }
+    hits.sort((a, b) => a[0] - b[0] || b[1].pop - a[1].pop);
+    // State names typed on their own ("nebr") come first.
+    if (!st && city.length >= 3) stateList.filter((s) => s.n.startsWith(city)).slice(0, 2).forEach((s) => out.push({ state: s.ab, label: s.name, sub: "State" }));
+    hits.slice(0, limit - out.length).forEach(([, p]) => out.push({ place: p, label: `${p.name}, ${p.st}`, sub: STATES[p.st] || p.st }));
+    return out;
+  }
+  // A picked suggestion, or typed text whose city and state clearly match one place, skips Nominatim.
+  function localPlace(q) {
+    if (!places) return null;
+    const { city, st } = splitQuery(q);
+    if (!city) return null;
+    const same = places.filter((p) => p.n === city && (!st || p.st === st));
+    if (same.length === 1 || (st && same.length)) return same[0];
+    return null;
+  }
+  function attachSuggest(input) {
+    const wrap = input.parentElement;
+    wrap.classList.add("ac");
+    const list = document.createElement("ul");
+    list.className = "ac-list"; list.id = input.id + "-list"; list.setAttribute("role", "listbox"); list.hidden = true;
+    wrap.appendChild(list);
+    input.setAttribute("role", "combobox"); input.setAttribute("aria-autocomplete", "list"); input.setAttribute("aria-expanded", "false"); input.setAttribute("aria-controls", list.id); input.autocomplete = "off";
+    let items = [], active = -1;
+    const close = () => { list.hidden = true; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); active = -1; };
+    const mark = (label, q) => {
+      const c = norm(splitQuery(q).city);
+      const i = c ? norm(label).indexOf(c) : -1;
+      return i === 0 ? `<b>${esc(label.slice(0, c.length))}</b>${esc(label.slice(c.length))}` : esc(label);
+    };
+    const show = () => {
+      items = suggest(input.value);
+      if (!items.length || document.activeElement !== input) return close();
+      list.innerHTML = items.map((it, i) => `<li role="option" id="${list.id}-${i}" data-i="${i}" aria-selected="false"><span>${mark(it.label, input.value)}</span><span class="sub">${esc(it.sub)}</span></li>`).join("");
+      list.hidden = false; input.setAttribute("aria-expanded", "true"); active = -1;
+    };
+    const setActive = (i) => {
+      active = (i + items.length) % items.length;
+      [...list.children].forEach((li, k) => li.setAttribute("aria-selected", k === active ? "true" : "false"));
+      input.setAttribute("aria-activedescendant", `${list.id}-${active}`);
+      list.children[active].scrollIntoView({ block: "nearest" });
+    };
+    const pick = (i) => { const it = items[i]; if (!it) return; input.value = it.label; close(); };
+    let timer;
+    input.addEventListener("focus", loadPlaces, { once: true });
+    input.addEventListener("input", () => {
+      clearTimeout(timer);
+      if (input.value.trim().length < 2) return close();
+      timer = setTimeout(() => (places ? show() : loadPlaces().then(show)), 80);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (list.hidden) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); setActive(active + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(active - 1); }
+      else if (e.key === "Enter" && active >= 0) { e.preventDefault(); pick(active); }
+      else if (e.key === "Escape") close();
+    });
+    list.addEventListener("pointerdown", (e) => { const li = e.target.closest("li"); if (li) { e.preventDefault(); pick(+li.dataset.i); } });
+    input.addEventListener("blur", () => setTimeout(close, 100));
+  }
+  ["from", "to", "spot"].forEach((id) => attachSuggest($(id)));
   async function geocode(q) {
     const c = parseCoords(q);
-    if (c) return { lat: c.lat, lon: c.lon, label: c.lat.toFixed(5) + ", " + c.lon.toFixed(5) };
+    if (c) return { lat: c.lat, lon: c.lon, label: c.lat.toFixed(5) + ", " + c.lon.toFixed(5), local: true };
+    await loadPlaces();
+    const p = localPlace(q);
+    if (p) return { lat: p.lat, lon: p.lon, label: `${p.name}, ${p.st}`, local: true };
     const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us,ca,mx&q=" + encodeURIComponent(q);
     const j = await getJSON(url, { headers: { "Accept-Language": "en" } });
     if (!j.length) throw new Error(`Couldn't find "${q}". Try adding the state, or enter coordinates like 41.2375, -95.8780.`);
@@ -1184,7 +1450,8 @@ nwr["name"~"towing|wrecker",i]${A};
       layer.clearLayers(); markers.clear();
       if (mode === "route") {
         status("Finding places…");
-        const a = await geocode($("from").value); await new Promise((r) => setTimeout(r, 1100)); // Nominatim: 1 request/second
+        const a = await geocode($("from").value);
+        if (!a.local) await new Promise((r) => setTimeout(r, 1100)); // Nominatim: 1 request/second
         const b = await geocode($("to").value);
         status("Building route…");
         const r = await route(a, b);
@@ -1218,7 +1485,6 @@ nwr["name"~"towing|wrecker",i]${A};
         }).filter((v) => v.lat != null);
         routeInfo = { spot: s.label, at: [s.lat, s.lon] };
       }
-      $("demo-banner").hidden = true;
       status(results.length ? "" : "No listings found. Try a wider search, or check the map for places OpenStreetMap may be missing.");
       render(true);
     } catch (err) {
@@ -1303,7 +1569,7 @@ nwr["name"~"towing|wrecker",i]${A};
     const c = catById[v.cat], t = v.tags, ph = phones(t), addr = address(t);
     const name = v.name || `Unnamed ${c.label.toLowerCase()}`;
     const updated = v.updated ? new Date(v.updated).toLocaleDateString("en-US", { year: "numeric", month: "short" }) : null;
-    const osmUrl = v.demo ? null : `https://www.openstreetmap.org/${v.id}`;
+    const osmUrl = `https://www.openstreetmap.org/${v.id}`;
     const dir = `https://www.google.com/maps/dir/?api=1&destination=${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
     const web = t.website || t["contact:website"];
     const copyText = [name, ph.join(" / "), addr, unit === "mile" ? `Route mile ${v.mile.toFixed(1)}` : `${v.mile.toFixed(1)} mi from truck`, `${v.lat.toFixed(5)}, ${v.lon.toFixed(5)}`].filter(Boolean).join("\n");
@@ -1312,7 +1578,6 @@ nwr["name"~"towing|wrecker",i]${A};
       <h3>${esc(name)}</h3>
       <div class="meta">
         <span class="pill"><span class="dot" style="background:var(--c-${c.id})"></span>${c.label}</span>
-        ${v.demo ? `<span class="pill demo">Demo</span>` : ""}
         ${is24(t) ? `<span class="pill h24">24/7</span>` : ""}
         ${v.off != null ? `<span>${v.off < 0.1 ? "On route" : v.off.toFixed(1) + " mi off route"}</span>` : ""}
         ${addr ? `<span>${esc(addr)}</span>` : ""}
@@ -1352,29 +1617,6 @@ nwr["name"~"towing|wrecker",i]${A};
     markers.get(v.id)?.openPopup();
   });
 
-  // ---------- demo (made-up businesses, 555-01xx numbers are reserved as fictional) ----------
-  function loadDemo() {
-    const pts = [[41.8781,-87.6298],[41.75,-87.56],[41.6,-87.42],[41.53,-87.33],[41.43,-87.33],[41.29,-87.42],[41.12,-87.33],[40.94,-87.17],[40.76,-87.13],[40.6,-87.02],[40.42,-86.86],[40.28,-86.68],[40.05,-86.47],[39.9,-86.3],[39.7684,-86.1581]];
-    const a = { lat: pts[0][0], lon: pts[0][1], label: "Chicago, IL" }, b = { lat: 39.7684, lon: -86.1581, label: "Indianapolis, IN" };
-    drawRoute(pts, a, b);
-    const cum = cumulative(pts);
-    const fake = [
-      ["repair", "Example Diesel & Trailer Repair", 41.545, -87.35, "(555) 010-0142", "24/7"],
-      ["tires", "Sample Commercial Tire", 41.30, -87.40, "(555) 010-0177", "Mo-Fr 07:00-18:00"],
-      ["fuel", "Demo Travel Plaza", 40.945, -87.15, "(555) 010-0118", "24/7"],
-      ["tow", "Placeholder Heavy Towing & Wrecker", 40.74, -87.10, "(555) 010-0163", "24/7"],
-      ["repair", "Example Fleet Service Center", 40.43, -86.89, "(555) 010-0125", "Mo-Sa 06:00-22:00"],
-      ["tires", "Sample Road Tire Service", 40.06, -86.44, "", ""],
-      ["dealer", "Demo Truck Sales & Service", 39.86, -86.27, "(555) 010-0190", "Mo-Fr 07:00-19:00"],
-    ];
-    results = fake.map(([cat, name, lat, lon, phone, hours], i) => {
-      const pl = placeOnRoute([lat, lon], pts, cum);
-      return { id: "demo/" + i, demo: true, cat, name, lat, lon, tags: { phone, opening_hours: hours }, mile: pl.along / MI, off: pl.d / MI };
-    });
-    routeInfo = { from: "Chicago, IL", to: "Indianapolis, IN", miles: cum[cum.length - 1] / MI, hours: null };
-    render();
-  }
-  loadDemo();
 })();
 </script>
 </body>
