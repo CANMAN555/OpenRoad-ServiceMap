@@ -712,11 +712,7 @@
   --accent: var(--blue);
   --focus: var(--orange);
   --header-bg: #ffffff;
-  --c-repair: #155A8A;
-  --c-tires: #6a4fa3;
-  --c-tow: #c62828;
-  --c-fuel: #FF6B00;
-  --c-dealer: #52616B;
+  --err: #c62828;
   --font-display: "Overpass", "Arial Narrow", system-ui, sans-serif;
   --font-body: "Overpass", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Overpass Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -727,7 +723,7 @@
     --bg: #07131f; --panel: #0B1F33; --fg: #F4F6F8; --muted: #a7b4be; --line: #1f3a55;
     --sign: #155A8A; --sign-fg: #ffffff; --amber-bg: #3a1c05; --amber-fg: #ffd2b0;
     --accent: #6fb2e6; --header-bg: #0B1F33;
-    --c-repair: #4b9bd6; --c-tires: #a58ee0; --c-tow: #f0706a; --c-fuel: #FF7a1a; --c-dealer: #9aa9b4;
+    --err: #f0706a;
     color-scheme: dark;
   }
 }
@@ -735,7 +731,7 @@
   --bg: #07131f; --panel: #0B1F33; --fg: #F4F6F8; --muted: #a7b4be; --line: #1f3a55;
   --sign: #155A8A; --sign-fg: #ffffff; --amber-bg: #3a1c05; --amber-fg: #ffd2b0;
   --accent: #6fb2e6; --header-bg: #0B1F33;
-  --c-repair: #4b9bd6; --c-tires: #a58ee0; --c-tow: #f0706a; --c-fuel: #FF7a1a; --c-dealer: #9aa9b4;
+  --err: #f0706a;
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -790,7 +786,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .notice strong { display: block; }
 .status:empty { display: none; }
 .status { font-size: .88rem; color: var(--muted); min-height: 1.2em; }
-.status.err { color: var(--c-tow); font-weight: 600; }
+.status.err { color: var(--err); font-weight: 600; }
 
 .summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--font-mono); font-size: .82rem; color: var(--muted); }
 .summary b { color: var(--fg); font-weight: 600; }
@@ -912,7 +908,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         </div>
 
         <fieldset class="chips" id="cats" style="border:0;padding:0;margin:0">
-          <legend class="sr" style="position:absolute;left:-9999px">Vendor types</legend>
+          <legend class="sr" style="position:absolute;left:-9999px">Companies</legend>
         </fieldset>
         <div class="status" id="status" role="status" aria-live="polite"></div>
       </form>
@@ -921,15 +917,14 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         <div class="summary" id="summary"></div>
         <div class="tools">
           <label class="chip"><input type="checkbox" id="phone-only"> Has phone number</label>
-          <label class="chip"><input type="checkbox" id="h24-only"> Open 24/7</label>
+          <label class="chip"><input type="checkbox" id="h24-only"> Open 24 hours</label>
         </div>
       </div>
       <ul class="list" id="list"></ul>
 
       <div class="foot">
-        <div class="notice"><strong>Always call ahead.</strong>Listings come from OpenStreetMap, which volunteers maintain. A shop can be missing, closed, or have an old phone number. Confirm hours, truck capacity and payment before you dispatch. Routes are standard driving routes and do not account for truck height, weight or hazmat restrictions.</div>
-        <p>Map data &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>, ODbL. Routing by <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a>. Vendor listings refreshed weekly from <a href="https://download.geofabrik.de/" target="_blank" rel="noopener">Geofabrik</a> OpenStreetMap extracts. Geocoding by <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>. City suggestions from the <a href="https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html" target="_blank" rel="noopener">U.S. Census Bureau</a>.</p>
-        <p>Know a shop that's missing or wrong? Use the "Fix this listing" link on any result, or add it at <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">openstreetmap.org</a>, and every driver using this site gets the fix.</p>
+        <div class="notice"><strong>Always call ahead.</strong>Locations come from each company's own store locator and are refreshed weekly. A location can still close or change its hours or phone number. Confirm hours, truck capacity and payment before you dispatch. Routes are standard driving routes and do not account for truck height, weight or hazmat restrictions.</div>
+        <p>Routes use <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> data (ODbL), routed by <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a>. Geocoding by <a href="https://nominatim.org/" target="_blank" rel="noopener">Nominatim</a>. City suggestions from the <a href="https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html" target="_blank" rel="noopener">U.S. Census Bureau</a>.</p>
       </div>
     </div>
   </aside>
@@ -943,23 +938,12 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   "use strict";
   const $ = (id) => document.getElementById(id);
   const MI = 1609.344;
-  const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
-
-  const CATS = [
-    { id: "repair", label: "Truck repair", letter: "R" },
-    { id: "tires",  label: "Tires",        letter: "T" },
-    { id: "tow",    label: "Towing",       letter: "W" },
-    { id: "fuel",   label: "Truck stops",  letter: "F" },
-    { id: "dealer", label: "Truck dealers", letter: "D" },
-  ];
-  const catById = Object.fromEntries(CATS.map((c) => [c.id, c]));
   const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
   // ---------- state ----------
   let mode = "route";
-  let results = [];      // {id, cat, name, lat, lon, tags, mile, off, updated}
+  let results = [];      // {id, b, s, name, lat, lon, mile, off}: company locations matching the search
   let routeInfo = null;  // {miles, hours, from, to} or {spot}
-  let markers = new Map();
 
   // ---------- map ----------
   const map = L.map("map", { zoomControl: true, maxZoom: 20 }).setView([39.8, -96], 4);
@@ -968,20 +952,12 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   L.layerGroup([
     L.tileLayer(ESRI + "World_Imagery/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 20, maxNativeZoom: 19, detectRetina: true,
-      attribution: 'Powered by <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics | Listings &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: 'Powered by <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics',
     }),
     L.tileLayer(ESRI + "Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 19 }),
     L.tileLayer(ESRI + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 20, maxNativeZoom: 19 }),
   ]).addTo(map);
   const layer = L.layerGroup().addTo(map);
-  // Vendor pins from a search. Clustered, because a 250 mile search can return thousands of listings.
-  const vendorPins = (L.markerClusterGroup
-    ? L.markerClusterGroup({
-        disableClusteringAtZoom: 11, maxClusterRadius: 50, showCoverageOnHover: false, spiderfyOnMaxZoom: false,
-        iconCreateFunction: (c) => L.divIcon({ className: "", html: `<div class="brand-cluster" style="--b:var(--navy);--bt:#fff;border-color:var(--orange)">${c.getChildCount()}</div>`, iconSize: [34, 34] }),
-      })
-    : L.layerGroup()).addTo(map);
-
   // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier, FleetPride, Southern Tire Mart ----------
   // Each brand's data/<key>.json is refreshed weekly from that company's own locator by a GitHub Action.
   const brandIcon = (b) =>
@@ -1343,10 +1319,12 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     return div;
   };
   brandCtl.addTo(map);
-  BRANDS.forEach((b) => {
+  // Every company location, kept so a search can list the ones near the truck or the route.
+  const stores = [], storeById = new Map(), groups = {};
+  const brandsReady = Promise.allSettled(BRANDS.map((b) => {
     const row = document.getElementById("lt-" + b.key);
-    const group = brandGroup(b), icon = brandIcon(b);
-    fetch(`data/${b.key}.json`)
+    const group = (groups[b.key] = brandGroup(b)), icon = brandIcon(b);
+    return fetch(`data/${b.key}.json`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
       .then((d) => {
         const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -1355,7 +1333,11 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
           // The popup opens only when the pin is clicked or tapped.
           const m = L.marker([s.lat, s.lon], { icon, riseOnHover: true, zIndexOffset: b.z });
           m.bindPopup(() => b.popup(s, checked), { maxWidth: 290 });
+          const id = b.key + ":" + s.id;
+          m.on("click", () => highlight(id, true));
           group.addLayer(m);
+          const st = { id, b, s, m, lat: s.lat, lon: s.lon, name: s.name };
+          stores.push(st); storeById.set(id, st);
         });
         group.addTo(map);
         row.querySelector(".nm").textContent = `${b.label} (${d.count})`;
@@ -1369,11 +1351,11 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         row.querySelector("input").checked = false;
         row.querySelector(".nm").textContent = `${b.label} (not available)`;
       });
-  });
+  }));
 
-  // ---------- category chips ----------
-  $("cats").insertAdjacentHTML("beforeend", CATS.map((c) =>
-    `<label class="chip"><input type="checkbox" id="cat-${c.id}" value="${c.id}" checked><span class="dot" style="background:var(--c-${c.id})"></span>${c.label}</label>`).join(""));
+  // ---------- company chips: which companies the results list shows ----------
+  $("cats").insertAdjacentHTML("beforeend", BRANDS.map((b) =>
+    `<label class="chip"><input type="checkbox" id="cat-${b.key}" value="${b.key}" checked><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span>${b.label}</label>`).join(""));
   $("cats").addEventListener("change", render);
   $("phone-only").addEventListener("change", render);
   $("h24-only").addEventListener("change", render);
@@ -1678,90 +1660,24 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     const r = j.routes[0];
     return { pts: r.geometry.coordinates.map(([lon, lat]) => [lat, lon]), meters: r.distance, seconds: r.duration };
   }
-  function overpassQuery(coords, radiusM) {
-    const A = `(around:${Math.round(radiusM)},${coords.map((c) => c[0].toFixed(5) + "," + c[1].toFixed(5)).join(",")})`;
-    return `[out:json][timeout:90];(
-nwr["shop"="truck_repair"]${A};
-nwr["shop"="tyres"]${A};
-nwr["shop"="truck"]${A};
-nwr["shop"="car_repair"]["hgv"~"^(yes|designated)$"]${A};
-nwr["shop"="car_repair"]["name"~"truck|diesel|fleet|semi|trailer",i]${A};
-nwr["amenity"="fuel"]["hgv"~"^(yes|designated)$"]${A};
-nwr["amenity"="fuel"]["name"~"Love's|Pilot|Flying J|TravelCenters|Petro Stopping|Sapp Bros|Road Ranger|Bosselman|Kenly 95|Iowa 80",i]${A};
-nwr["name"~"towing|wrecker",i]${A};
-);out center meta;`;
-  }
-  async function overpass(q) {
-    // Start at a random server so visitors spread out instead of all hitting the same one first.
-    const start = Math.floor(Math.random() * OVERPASS.length);
-    const order = OVERPASS.map((_, i) => OVERPASS[(start + i) % OVERPASS.length]);
-    try {
-      return await remember("op:" + q, () => firstOk(order.map((ep) => () =>
-        getJSON(ep, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } }, { timeout: 100000 }))));
-    } catch (e) {
-      throw new Error("The vendor search service is busy or unreachable (" + e.message + "). Wait a minute and try again.");
-    }
-  }
-  // Listings come from data/osm/, built weekly from OpenStreetMap by a GitHub Action, so a search
-  // runs in the browser at any radius and never waits on a busy public server. If those files
-  // aren't there, the page falls back to asking the live Overpass servers.
-  let osmIndex;
-  const loadOsmIndex = () => (osmIndex ||= fetch("data/osm/index.json").then((r) => (r.ok ? r.json() : null)).catch(() => null));
-  const loadTile = (k) => remember("tile:" + k, () => getJSON(`data/osm/t${k}.json`, {}, { timeout: 30000 }));
-  // Listings within radiusM of any of the points, as [{id, lat, lon, tags, updated}].
-  async function listingsNear(idx, points, radiusM) {
-    const D = idx.tile_degrees, keys = new Set();
-    const cell = radiusM / 111320; // grid of the search points, one cell about one radius tall
-    const grid = new Map(), gk = (a, o) => a + "," + o;
-    const lonCell = (lat) => cell / Math.max(Math.cos(lat * Math.PI / 180), 0.05);
+  // Company locations within radiusM of any of the points. The points go in a grid about one
+  // radius per cell, so each location is only measured against the points next to it.
+  async function findListings(points, radiusM) {
+    await brandsReady;
+    const cell = radiusM / 111320, grid = new Map(), gk = (a, o) => a + "," + o;
     let maxLat = 0;
     for (const p of points) maxLat = Math.max(maxLat, Math.abs(p[0]));
-    const lc = lonCell(Math.min(maxLat + cell, 85));
-    for (const [lat, lon] of points) {
-      const dLat = cell, dLon = lonCell(Math.min(Math.abs(lat) + cell, 85));
-      for (let a = Math.floor((lat - dLat) / D) * D; a <= lat + dLat; a += D)
-        for (let o = Math.floor((lon - dLon) / D) * D; o <= lon + dLon; o += D) if (idx.tiles[`${a}_${o}`]) keys.add(`${a}_${o}`);
-      const k = gk(Math.floor(lat / cell), Math.floor(lon / lc));
-      (grid.get(k) || grid.set(k, []).get(k)).push([lat, lon]);
+    const lc = cell / Math.max(Math.cos(Math.min(maxLat + cell, 85) * Math.PI / 180), 0.05);
+    for (const p of points) {
+      const k = gk(Math.floor(p[0] / cell), Math.floor(p[1] / lc));
+      (grid.get(k) || grid.set(k, []).get(k)).push(p);
     }
-    const out = [];
-    for (const rows of await Promise.all([...keys].map(loadTile))) {
-      for (const [id, lat, lon, ts, tags] of rows) {
-        const ga = Math.floor(lat / cell), go = Math.floor(lon / lc);
-        let near = false;
-        for (let i = -1; i <= 1 && !near; i++) for (let j = -1; j <= 1 && !near; j++)
-          for (const p of grid.get(gk(ga + i, go + j)) || []) if (hav(p, [lat, lon]) <= radiusM) { near = true; break; }
-        if (near) out.push({ id, lat, lon, tags, updated: ts });
-      }
-    }
-    return out;
-  }
-  // The same search against the live Overpass servers, used only when data/osm/ is missing.
-  async function listingsLive(points, radiusM, onPart) {
-    const chunks = [];
-    for (let i = 0; i === 0 || i < points.length - 1; i += 59) chunks.push(points.slice(i, i + 60));
-    const seen = new Map();
-    for (let i = 0; i < chunks.length; i++) {
-      onPart(i + 1, chunks.length);
-      const j = await overpass(overpassQuery(chunks[i], radiusM));
-      j.elements.forEach((el) => seen.set(el.type + "/" + el.id, el));
-    }
-    return [...seen.entries()].map(([id, el]) => ({ id, lat: el.lat ?? el.center?.lat, lon: el.lon ?? el.center?.lon, tags: el.tags || {}, updated: el.timestamp }))
-      .filter((v) => v.lat != null);
-  }
-  async function findListings(points, radiusM) {
-    const idx = await loadOsmIndex();
-    if (idx) return listingsNear(idx, points, radiusM);
-    return listingsLive(points, radiusM, (i, n) => status(n > 1 ? `Searching for vendors… section ${i} of ${n}` : "Searching for vendors…"));
-  }
-  function classify(t) {
-    const n = (t.name || "") + " " + (t.brand || "");
-    if (/towing|wrecker/i.test(n)) return "tow";
-    if (t.shop === "tyres") return "tires";
-    if (t.shop === "truck_repair" || t.shop === "car_repair") return "repair";
-    if (t.shop === "truck") return "dealer";
-    if (t.amenity === "fuel") return "fuel";
-    return "repair";
+    return stores.filter((v) => {
+      const ga = Math.floor(v.lat / cell), go = Math.floor(v.lon / lc);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++)
+        for (const p of grid.get(gk(ga + i, go + j)) || []) if (hav(p, [v.lat, v.lon]) <= radiusM) return true;
+      return false;
+    });
   }
 
   // ---------- search ----------
@@ -1770,7 +1686,7 @@ nwr["name"~"towing|wrecker",i]${A};
     const go = $("go"); go.disabled = true;
     const radiusM = +$("radius").value * MI;
     try {
-      layer.clearLayers(); vendorPins.clearLayers(); markers.clear();
+      layer.clearLayers();
       if (mode === "route") {
         status("Finding places…");
         const a = await geocode($("from").value);
@@ -1787,7 +1703,7 @@ nwr["name"~"towing|wrecker",i]${A};
         const found = await findListings(coarse, radiusM + 3000);
         results = found.map((v) => {
           const pl = placeOnRoute([v.lat, v.lon], fine, fineCum);
-          return { ...v, cat: classify(v.tags), name: v.tags.name, mile: pl.along / MI, off: pl.d / MI };
+          return { ...v, mile: pl.along / MI, off: pl.d / MI };
         }).filter((v) => v.off <= radiusM / MI * 1.05);
         routeInfo = { from: a.label, to: b.label, miles: r.meters / MI, hours: r.seconds / 3600 };
       } else {
@@ -1796,10 +1712,10 @@ nwr["name"~"towing|wrecker",i]${A};
         drawSpot(s, radiusM);
         status("Searching for vendors…");
         const found = await findListings([[s.lat, s.lon]], radiusM);
-        results = found.map((v) => ({ ...v, cat: classify(v.tags), name: v.tags.name, mile: hav([s.lat, s.lon], [v.lat, v.lon]) / MI, off: null }));
+        results = found.map((v) => ({ ...v, mile: hav([s.lat, s.lon], [v.lat, v.lon]) / MI, off: null }));
         routeInfo = { spot: s.label, at: [s.lat, s.lon] };
       }
-      status(results.length ? "" : "No listings found. Try a wider search, or check the map for places OpenStreetMap may be missing.");
+      status(results.length ? "" : "None of the listed companies are within this distance. Try a wider search.");
       render(true);
     } catch (err) {
       const msg = err instanceof TypeError ? "Couldn't reach the map services. Check your connection and try again." : err.message;
@@ -1841,39 +1757,27 @@ nwr["name"~"towing|wrecker",i]${A};
 
   // ---------- render ----------
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const phones = (t) => (t.phone || t["contact:phone"] || t["phone:mobile"] || "").split(";").map((s) => s.trim()).filter(Boolean);
-  const is24 = (t) => /^\s*24\/7\s*$/.test(t.opening_hours || "");
-  function address(t) {
-    const street = [t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" ");
-    return [street, t["addr:city"], t["addr:state"]].filter(Boolean).join(", ");
-  }
+  // Phone numbers for a location: the main line first, then any service or road service line.
+  const phones = (s) => [...new Set([s.phone, s.servicePhone, s.mobilePhone, s.afterHours, s.phone2].filter((p) => typeof p === "string" && p))];
+  // Open around the clock: 24-hour road service, or a shop whose own hours say 24 hours every day.
+  const is24 = (s) => !!(s.roadService24 || s.roadside24 || s.allDay ||
+    (Array.isArray(s.hours) && s.hours.length === 7 && s.hours.every((d) => /24 hours/i.test(d.hours || ""))) ||
+    /Mon-Sun: 24 hours/i.test(s.shop?.hours || ""));
+  const address = (s) => [s.address, s.city, [s.state, s.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   function telHref(p) { return "tel:" + p.replace(/[^\d+]/g, ""); }
 
   function render(fit) {
-    const on = new Set(CATS.filter((c) => $("cat-" + c.id).checked).map((c) => c.id));
+    const on = new Set(BRANDS.filter((b) => $("cat-" + b.key).checked).map((b) => b.key));
     const shown = results
-      .filter((v) => on.has(v.cat))
-      .filter((v) => !$("phone-only").checked || phones(v.tags).length)
-      .filter((v) => !$("h24-only").checked || is24(v.tags))
+      .filter((v) => on.has(v.b.key))
+      .filter((v) => !$("phone-only").checked || phones(v.s).length)
+      .filter((v) => !$("h24-only").checked || is24(v.s))
       .sort((a, b) => a.mile - b.mile);
 
     // summary
     const s = $("summary");
     if (routeInfo?.spot) s.innerHTML = `<span>Near <b>${esc(routeInfo.spot)}</b></span><span><b>${shown.length}</b> of ${results.length} listings</span>`;
     else if (routeInfo) s.innerHTML = `<span><b>${esc(routeInfo.from)}</b> to <b>${esc(routeInfo.to)}</b></span><span><b>${routeInfo.miles.toFixed(0)}</b> mi</span>${routeInfo.hours != null ? `<span><b>${Math.floor(routeInfo.hours)}h ${Math.round(routeInfo.hours % 1 * 60)}m</b> car time</span>` : ""}<span><b>${shown.length}</b> of ${results.length} listings</span>`;
-
-    // markers
-    vendorPins.clearLayers(); markers.clear();
-    const pins = shown.map((v) => {
-      const c = catById[v.cat];
-      const m = L.marker([v.lat, v.lon], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:var(--c-${c.id})"><span>${c.letter}</span></div>`, iconSize: [26, 26], iconAnchor: [13, 26], popupAnchor: [0, -24] }) });
-      const ph = phones(v.tags);
-      m.bindPopup(`<b>${esc(v.name || "Unnamed " + c.label.toLowerCase())}</b><br>${esc(c.label)}${ph[0] ? `<br><a href="${telHref(ph[0])}">${esc(ph[0])}</a>` : ""}`);
-      m.on("click", () => highlight(v.id, true));
-      markers.set(v.id, m);
-      return m;
-    });
-    vendorPins.addLayers(pins);
 
     const unit = routeInfo?.spot ? "mi away" : "mile";
     // The list shows the nearest 300; every match is still on the map.
@@ -1885,23 +1789,18 @@ nwr["name"~"towing|wrecker",i]${A};
   }
 
   function card(v, unit) {
-    const c = catById[v.cat], t = v.tags, ph = phones(t), addr = address(t);
-    const name = v.name || `Unnamed ${c.label.toLowerCase()}`;
-    const updated = v.updated ? new Date(v.updated).toLocaleDateString("en-US", { year: "numeric", month: "short" }) : null;
-    const osmUrl = `https://www.openstreetmap.org/${v.id}`;
+    const { b, s } = v, ph = phones(s), addr = address(s);
     const dir = `https://www.google.com/maps/dir/?api=1&destination=${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
-    const web = t.website || t["contact:website"];
-    const copyText = [name, ph.join(" / "), addr, unit === "mile" ? `Route mile ${v.mile.toFixed(1)}` : `${v.mile.toFixed(1)} mi from truck`, `${v.lat.toFixed(5)}, ${v.lon.toFixed(5)}`].filter(Boolean).join("\n");
+    const web = s.url || s.website;
+    const copyText = [`${b.label}: ${v.name}`, ph.join(" / "), addr, unit === "mile" ? `Route mile ${v.mile.toFixed(1)}` : `${v.mile.toFixed(1)} mi from truck`, `${v.lat.toFixed(5)}, ${v.lon.toFixed(5)}`].filter(Boolean).join("\n");
     return `<li class="card" data-id="${esc(v.id)}">
       <div class="mile"><span class="n">${v.mile.toFixed(v.mile < 100 ? 1 : 0)}</span><span class="u">${unit}</span></div>
-      <h3>${esc(name)}</h3>
+      <h3>${esc(v.name)}</h3>
       <div class="meta">
-        <span class="pill"><span class="dot" style="background:var(--c-${c.id})"></span>${c.label}</span>
-        ${is24(t) ? `<span class="pill h24">24/7</span>` : ""}
+        <span class="pill"><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span>${esc(b.label)}</span>
+        ${is24(s) ? `<span class="pill h24">24 hours</span>` : ""}
         ${v.off != null ? `<span>${v.off < 0.1 ? "On route" : v.off.toFixed(1) + " mi off route"}</span>` : ""}
         ${addr ? `<span>${esc(addr)}</span>` : ""}
-        ${t.opening_hours && !is24(t) ? `<span>Hours: ${esc(t.opening_hours)}</span>` : ""}
-        ${updated ? `<span>Listing edited ${updated}</span>` : ""}
       </div>
       <div class="actions">
         ${ph.length ? ph.map((p) => `<a class="call" href="${telHref(p)}">${esc(p)}</a>`).join("") : `<span class="nophone">No phone listed</span>`}
@@ -1909,8 +1808,7 @@ nwr["name"~"towing|wrecker",i]${A};
       </div>
       <div class="links">
         <a href="${dir}" target="_blank" rel="noopener">Directions</a>
-        ${web ? `<a href="${esc(web)}" target="_blank" rel="noopener">Website</a>` : ""}
-        ${osmUrl ? `<a href="${osmUrl}" target="_blank" rel="noopener">Fix this listing</a>` : ""}
+        ${web ? `<a href="${esc(web)}" target="_blank" rel="noopener">Location page</a>` : ""}
       </div>
     </li>`;
   }
@@ -1931,11 +1829,13 @@ nwr["name"~"towing|wrecker",i]${A};
     }
     if (e.target.closest("a")) return;
     const li = e.target.closest(".card"); if (!li) return;
-    const v = results.find((r) => r.id === li.dataset.id); if (!v) return;
+    const v = storeById.get(li.dataset.id); if (!v) return;
     highlight(v.id);
-    const m = markers.get(v.id);
-    if (m && vendorPins.zoomToShowLayer) { map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12), { animate: false }); vendorPins.zoomToShowLayer(m, () => m.openPopup()); }
-    else { map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12)); m?.openPopup(); }
+    // Turn the company's layer back on if it was switched off, then open the pin's popup.
+    const group = groups[v.b.key], box = document.querySelector(`#lt-${v.b.key} input`);
+    if (!map.hasLayer(group)) { group.addTo(map); if (box) box.checked = true; }
+    map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12), { animate: false });
+    if (group.zoomToShowLayer) group.zoomToShowLayer(v.m, () => v.m.openPopup()); else v.m.openPopup();
   });
 
 })();

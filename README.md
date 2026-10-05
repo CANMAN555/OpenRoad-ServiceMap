@@ -4,7 +4,7 @@ Find truck repair, tire, towing along a route for commercial vehicle road calls.
 
 **Live site: https://canman555.github.io/OpenRoad-ServiceMap/**
 
-A free, open source website for truck drivers and dispatchers setting up a road call. Enter a route, or where the truck is broken down, and it lists truck repair shops, tire shops, towing, truck stops and truck dealers near the route. Results are sorted by route mile and have tap-to-call phone numbers.
+A free, open source website for truck drivers and dispatchers setting up a road call. Enter a route, or where the truck is broken down, and it lists the locations of a set list of truck service companies near the route: Love's, TA/Petro, Freightliner, Volvo Trucks, Boss Truck Shops, Utility Trailer, Prestige Trailers, Timpte, Thermo King, Carrier Transicold, FleetPride and Southern Tire Mart. Results are sorted by route mile and have tap-to-call phone numbers.
 
 ![Desktop screenshot](screenshots/desktop.png)
 
@@ -18,7 +18,7 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **Near the truck:** search around an address, town, coordinates, or the phone's location.
 - **City suggestions as you type** in From, To and Truck location, and they still match with typos ("omaha nebraksa" finds Omaha, NE). Picking one skips the online lookup.
 - **Route mile for every result**, plus how far off route it is.
-- **Tap-to-call** numbers, hours, a 24/7 filter, and a "has phone number" filter.
+- **Tap-to-call** numbers, an "open 24 hours" filter, and a "has phone number" filter.
 - **Copy info** button that copies name, phone, address, route mile and coordinates for dispatch.
 - **Satellite view** using Esri World Imagery, with road and town labels.
 - **Every Love's location in the US** (Travel Stops, Country Stores and Truck Care/Speedco shops) as yellow pins. Click or tap a pin for the address, phone number, highway exit, hours and a link to the location page on loves.com. Each popup says plainly whether the location sells truck diesel, has a truck repair shop and offers tire service.
@@ -34,7 +34,6 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **FleetPride** as maroon **FP** pins: heavy-duty parts branches, FleetPride service centers, TruckPro stores and FleetPride's independent service affiliates. Popups show parts, repair services, mobile or roadside service, towing, hours and the mobile service phone.
 - **Southern Tire Mart** as black **ST** pins with red letters, including its truck tire and service shops at Pilot Flying J travel centers. Popups show commercial truck tires, truck repair and maintenance, mobile or roadside service, and hours.
 - A box at the top right of the map turns each brand on or off.
-- **Fix this listing** link on every result, so anyone can correct the data on OpenStreetMap.
 - Works on phones, with light and dark themes.
 
 <img src="screenshots/city-suggestions.png" alt="City suggestions under the From box in light and dark mode" width="820">
@@ -63,18 +62,18 @@ It is one static file (`index.html`) with no server and no API keys, so it can b
 | Place search | Nominatim (US, Canada, Mexico), with komoot's Photon as the backup |
 | City suggestions | `data/places.json`: every U.S. city, town and CDP from the Census Bureau's 2024 Gazetteer and population estimates (public domain), built by `scripts/build-places.mjs` |
 | Route | OSRM public demo server, driving profile, with the FOSSGIS OSRM server (routing.openstreetmap.de) as the backup |
-| Vendor search | `data/osm/`: OpenStreetMap listings for the U.S., Canada and Mexico in 2-degree tiles, built every Monday from [Geofabrik](https://download.geofabrik.de/) extracts by `scripts/build-osm-vendors.py`. The browser loads only the tiles near the truck or along the route. If the files are missing it falls back to the live Overpass API. |
+| Vendor search | The company location files in `data/` (listed below). The browser checks every location against the truck's spot or the route, so the search never waits on an outside server. |
 
-Searches near the truck go out to 10, 50, 100, 200 or 250 miles; searches along a route cover 3 to 25 miles each side. The list shows the nearest 300 results and the map shows all of them, clustered until you zoom in.
+Searches near the truck go out to 10, 50, 100, 200 or 250 miles; searches along a route cover 3 to 25 miles each side. The list shows the nearest 300 results. Clicking a result opens that company's pin on the map.
 
-Vendor types come from these OpenStreetMap tags: `shop=truck_repair`, `shop=tyres`, `shop=truck`, `shop=car_repair` with `hgv=yes` or a truck/diesel/fleet name, `amenity=fuel` with `hgv=yes` or a major truck stop brand name, and anything named "towing" or "wrecker".
+The map and the results show only the companies listed below. General shops from OpenStreetMap (car tire chains, auto repair, unrelated towing) were removed on 2026-10-05 so the site stays focused on these vendors.
 
 ### Many people at once
 
-There is no shared server behind the page. Each visitor's browser does its own search, using the vendor files on this site plus the public place-search and routing services, so two dispatchers looking up different routes at the same time never see or slow down each other's results. To keep searches working when a public server is busy:
+There is no shared server behind the page. Each visitor's browser does its own search, using the company location files on this site plus the public place-search and routing services, so two dispatchers looking up different routes at the same time never see or slow down each other's results. To keep searches working when a public server is busy:
 
 - Every request has a time limit, and a busy answer (HTTP 429 or 5xx) gets one more try after a short wait.
-- Vendor searches read files from this site, so they never wait on a busy public server. The live Overpass servers timed out even on 5 mile searches when tested on 2026-10-05, which is why the listings are now built ahead of time.
+- Vendor searches read files from this site, so they never wait on a busy public server.
 - Place search and routing have backup servers. The page moves to the next one when a server fails.
 - Answers are remembered for the visit, so running the same search again doesn't ask the servers twice.
 
@@ -110,10 +109,10 @@ Timpte's main site (timpte.com/locations) would also list Super Hopper grain tra
 
 ## Limits to know about
 
-- **Listings can be missing or out of date.** OpenStreetMap is maintained by volunteers, and the site's copy is refreshed weekly, so an edit made today shows up after the next Monday update. Always call ahead to confirm hours, heavy-truck capability and payment. Each result shows when its listing was last edited and links to fix it on OpenStreetMap.
+- **Locations can be out of date.** Each company's list is refreshed weekly, so a store that opened or closed this week shows up after the next Monday update. Always call ahead to confirm hours, heavy-truck capability and payment.
 - **Routes are car routes.** OSRM's public server does not know truck height, weight, length or hazmat restrictions. Use a truck GPS for the actual drive.
 - **Public servers have usage limits.** Nominatim allows about one request per second per visitor, and the OSRM demo server is meant for light use. The backups help, but heavy traffic from many visitors can still hit these fair-use limits. Esri World Imagery is used under Esri's terms, which may require an Esri account for heavy or commercial use. If traffic grows, point the URLs at your own or a paid provider.
-- Mobile road service companies are rarely mapped in OpenStreetMap, so they mostly won't show up.
+- Only the companies listed above appear. Other shops, including independent towing and repair, are not on the map.
 
 ## Run locally
 
@@ -129,4 +128,4 @@ Then open http://localhost:8000. Opening `index.html` directly also works in mos
 
 ## License
 
-MIT for the code. Map data © OpenStreetMap contributors, available under the ODbL.
+MIT for the code. Routes use OpenStreetMap data © OpenStreetMap contributors, available under the ODbL.
