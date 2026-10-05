@@ -10,7 +10,11 @@ async function get(url, name, opts = {}) {
     return buf.toString("utf8");
   } catch (e) { console.log(name, "ERR", e.message); return ""; }
 }
-await get("https://timpte.com/wp-content/themes/plumbweb-child/_assets/_dist/locations-js.js?ver=1790977616", "timpte-locations.js");
-await get("https://prestigetrailers.com/wp-content/themes/prestige-wp/dist/js/main-c87870f2.js?ver=7.0.6", "prestige-main.js");
-await get("https://bosstruckshops.com/locations-sitemap.xml", "boss-locations-sitemap.xml");
-await get("https://www.lodeking.com/shopping-tools-find-dealer", "lodeking-dealer.html");
+const loc = await get("https://prestigetrailers.com/wp-content/themes/prestige-wp/dist/js/dealerLocator-7763edbb.js", "prestige-locator.js");
+const main = await get("https://prestigetrailers.com/wp-content/themes/prestige-wp/dist/js/main-c87870f2.js?ver=7.0.6", "x.js");
+const urls = [...new Set([...(loc + main).matchAll(/https:\/\/dealers\.prestigetrailers\.com\/api\/[^"'`\s]+/g)].map((m) => m[0]))];
+console.log("prestige api urls (keys hidden)", urls.map((u) => u.replace(/apikey=[^&]+/, "apikey=…")));
+let i = 0;
+for (const u of urls) await get(u.replace(/\$\{[^}]+\}/g, ""), `prestige-api-${i++}.json`);
+await get("https://timpte.com/wp-content/themes/plumbweb-child/_assets/_dist/main.js?ver=1790977620", "timpte-main.js");
+await get("https://timpte.com/wp-json/wp/v2/types", "timpte-types.json");
