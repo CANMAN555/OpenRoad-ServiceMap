@@ -56,12 +56,20 @@ It is one static file (`index.html`) with no server and no API keys, so it can b
 | Job | Service (free, public) |
 | --- | --- |
 | Map tiles | Esri World Imagery satellite with Esri road and place labels, via Leaflet 1.9.4 |
-| Place search | Nominatim (US, Canada, Mexico) |
+| Place search | Nominatim (US, Canada, Mexico), with komoot's Photon as the backup |
 | City suggestions | `data/places.json`: every U.S. city, town and CDP from the Census Bureau's 2024 Gazetteer and population estimates (public domain), built by `scripts/build-places.mjs` |
-| Route | OSRM public demo server, driving profile |
-| Vendor search | Overpass API, searched in a corridor along the route |
+| Route | OSRM public demo server, driving profile, with the FOSSGIS OSRM server (routing.openstreetmap.de) as the backup |
+| Vendor search | Overpass API (overpass-api.de, kumi.systems and private.coffee servers), searched in a corridor along the route |
 
 Vendor types come from these OpenStreetMap tags: `shop=truck_repair`, `shop=tyres`, `shop=truck`, `shop=car_repair` with `hgv=yes` or a truck/diesel/fleet name, `amenity=fuel` with `hgv=yes` or a major truck stop brand name, and anything named "towing" or "wrecker".
+
+### Many people at once
+
+There is no shared server behind the page. Each visitor's browser does its own search against the public services, so two dispatchers looking up different routes at the same time never see or slow down each other's results. To keep searches working when a public server is busy:
+
+- Every request has a time limit, and a busy answer (HTTP 429 or 5xx) gets one more try after a short wait.
+- Each service has backup servers. The page moves to the next one when a server fails, and each visitor starts at a random Overpass server so the load spreads out.
+- Answers are remembered for the visit, so running the same search again doesn't ask the servers twice.
 
 ## Love's locations
 
@@ -93,7 +101,7 @@ Timpte's main site (timpte.com/locations) would also list Super Hopper grain tra
 
 - **Listings can be missing or out of date.** OpenStreetMap is maintained by volunteers. Always call ahead to confirm hours, heavy-truck capability and payment. Each result shows when its listing was last edited and links to fix it on OpenStreetMap.
 - **Routes are car routes.** OSRM's public server does not know truck height, weight, length or hazmat restrictions. Use a truck GPS for the actual drive.
-- **Public servers have usage limits.** Nominatim allows about one request per second, and the OSRM demo server is meant for light use. Esri World Imagery is used under Esri's terms, which may require an Esri account for heavy or commercial use. If traffic grows, point the URLs at your own or a paid provider.
+- **Public servers have usage limits.** Nominatim allows about one request per second per visitor, and the OSRM demo server is meant for light use. The backups help, but heavy traffic from many visitors can still hit these fair-use limits. Esri World Imagery is used under Esri's terms, which may require an Esri account for heavy or commercial use. If traffic grows, point the URLs at your own or a paid provider.
 - Mobile road service companies are rarely mapped in OpenStreetMap, so they mostly won't show up.
 
 ## Run locally

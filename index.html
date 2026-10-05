@@ -941,7 +941,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   "use strict";
   const $ = (id) => document.getElementById(id);
   const MI = 1609.344;
-  const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+  const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
 
   const CATS = [
     { id: "repair", label: "Truck repair", letter: "R" },
@@ -1372,11 +1372,44 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   }
 
   // ---------- network ----------
-  async function getJSON(url, opts) {
-    const r = await fetch(url, opts);
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.json();
+  // Each visitor's browser talks to these public services directly, so many people can search at once
+  // without sharing anything. A busy server (429 or 5xx) gets one more try after a short wait, every
+  // request has a time limit, and each service has a backup server to fall back to.
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function getJSON(url, opts = {}, { timeout = 30000, tries = 2 } = {}) {
+    let last;
+    for (let i = 0; i < tries; i++) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), timeout);
+      try {
+        const r = await fetch(url, { ...opts, signal: ctl.signal });
+        if (r.ok) return await r.json();
+        last = new Error("HTTP " + r.status);
+        if (r.status !== 429 && r.status < 500) throw last; // a bad request won't get better on retry
+        const wait = Math.min(+r.headers.get("Retry-After") || 0, 10) * 1000;
+        if (i < tries - 1) await sleep(wait || 1500 + Math.random() * 1500);
+      } catch (e) {
+        if (e === last) throw e;
+        last = e.name === "AbortError" ? new Error("timed out") : e;
+        if (i < tries - 1) await sleep(1000 + Math.random() * 1000);
+      } finally { clearTimeout(timer); }
+    }
+    throw last;
   }
+  // Try each server in turn; the first one that answers wins.
+  async function firstOk(fns) {
+    let last;
+    for (const fn of fns) {
+      try { return await fn(); } catch (e) { last = e; }
+    }
+    throw last;
+  }
+  // Remember answers for this visit, so repeating a search doesn't ask the servers again.
+  const memo = new Map();
+  const remember = (key, fn) => {
+    if (!memo.has(key)) memo.set(key, fn().catch((e) => { memo.delete(key); throw e; }));
+    return memo.get(key);
+  };
   // Accepts "41.237536, -95.877982", "(41.237536, -95.877982)", "[41.2375 -95.8780]",
   // "41.2375° N, 95.8780° W" and longitude-first pairs. Returns null when the text isn't a coordinate pair.
   function parseCoords(q) {
@@ -1545,14 +1578,31 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     await loadPlaces();
     const p = localPlace(q);
     if (p) return { lat: p.lat, lon: p.lon, label: `${p.name}, ${p.st}`, local: true };
-    const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us,ca,mx&q=" + encodeURIComponent(q);
-    const j = await getJSON(url, { headers: { "Accept-Language": "en" } });
-    if (!j.length) throw new Error(`Couldn't find "${q}". Try adding the state, or enter coordinates like 41.2375, -95.8780.`);
-    return { lat: +j[0].lat, lon: +j[0].lon, label: j[0].display_name.split(",").slice(0, 3).join(",") };
+    const hit = await remember("geo:" + q.trim().toLowerCase(), () => firstOk([
+      // Nominatim (OpenStreetMap's geocoder) first; Photon (komoot, same OpenStreetMap data) as the backup.
+      async () => {
+        const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us,ca,mx&q=" + encodeURIComponent(q);
+        const j = await getJSON(url, { headers: { "Accept-Language": "en" } }, { timeout: 15000 });
+        return j.length ? { lat: +j[0].lat, lon: +j[0].lon, label: j[0].display_name.split(",").slice(0, 3).join(","), net: true } : null;
+      },
+      async () => {
+        const url = "https://photon.komoot.io/api/?limit=5&lang=en&q=" + encodeURIComponent(q);
+        const j = await getJSON(url, {}, { timeout: 15000 });
+        const f = (j.features || []).find((x) => /^(US|CA|MX)$/i.test(x.properties.countrycode || ""));
+        if (!f) return null;
+        const p = f.properties;
+        return { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], label: [p.name, p.city !== p.name && p.city, p.state].filter(Boolean).join(", "), net: true };
+      },
+    ]));
+    if (!hit) throw new Error(`Couldn't find "${q}". Try adding the state, or enter coordinates like 41.2375, -95.8780.`);
+    return hit;
   }
   async function route(a, b) {
-    const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`;
-    const j = await getJSON(url);
+    const path = `/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`;
+    // OSRM's demo server first; the FOSSGIS OSRM server (routing.openstreetmap.de) as the backup.
+    const j = await remember("route:" + path, () => firstOk(
+      ["https://router.project-osrm.org", "https://routing.openstreetmap.de/routed-car"].map((base) => () => getJSON(base + path, {}, { timeout: 30000 }))
+    ));
     if (j.code !== "Ok" || !j.routes.length) throw new Error("No driving route found between those places.");
     const r = j.routes[0];
     return { pts: r.geometry.coordinates.map(([lon, lat]) => [lat, lon]), meters: r.distance, seconds: r.duration };
@@ -1571,12 +1621,15 @@ nwr["name"~"towing|wrecker",i]${A};
 );out center meta;`;
   }
   async function overpass(q) {
-    let lastErr;
-    for (const ep of OVERPASS) {
-      try { return await getJSON(ep, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } }); }
-      catch (e) { lastErr = e; }
+    // Start at a random server so visitors spread out instead of all hitting the same one first.
+    const start = Math.floor(Math.random() * OVERPASS.length);
+    const order = OVERPASS.map((_, i) => OVERPASS[(start + i) % OVERPASS.length]);
+    try {
+      return await remember("op:" + q, () => firstOk(order.map((ep) => () =>
+        getJSON(ep, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "Content-Type": "application/x-www-form-urlencoded" } }, { timeout: 100000 }))));
+    } catch (e) {
+      throw new Error("The vendor search service is busy or unreachable (" + e.message + "). Wait a minute and try again.");
     }
-    throw new Error("The vendor search service is busy or unreachable (" + lastErr.message + "). Wait a minute and try again.");
   }
   function classify(t) {
     const n = (t.name || "") + " " + (t.brand || "");
@@ -1598,7 +1651,7 @@ nwr["name"~"towing|wrecker",i]${A};
       if (mode === "route") {
         status("Finding places…");
         const a = await geocode($("from").value);
-        if (!a.local) await new Promise((r) => setTimeout(r, 1100)); // Nominatim: 1 request/second
+        if (a.net) await sleep(1100); // Nominatim asks for at most 1 request per second
         const b = await geocode($("to").value);
         status("Building route…");
         const r = await route(a, b);
