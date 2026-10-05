@@ -1,4 +1,4 @@
-// Small helpers shared by the vendor update scripts (TA, Freightliner, Volvo).
+// Small helpers shared by the vendor update scripts.
 import { mkdir, writeFile } from "node:fs/promises";
 
 export const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0; +https://github.com/CANMAN555/OpenRoad-ServiceMap)";

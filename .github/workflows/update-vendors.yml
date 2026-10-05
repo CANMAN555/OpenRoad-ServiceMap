@@ -1,4 +1,4 @@
-name: Update TA, Freightliner and Volvo locations
+name: Update brand locations (TA, Freightliner, Volvo, Boss, Utility, Prestige)
 
 on:
   workflow_dispatch:
@@ -11,6 +11,9 @@ on:
       - scripts/update-ta.mjs
       - scripts/update-freightliner.mjs
       - scripts/update-volvo.mjs
+      - scripts/update-boss.mjs
+      - scripts/update-utility.mjs
+      - scripts/update-prestige.mjs
       - .github/workflows/update-vendors.yml
 
 permissions:
@@ -38,12 +41,21 @@ jobs:
       - name: Volvo Trucks
         run: node scripts/update-volvo.mjs
         continue-on-error: true
+      - name: Boss Truck Shops
+        run: node scripts/update-boss.mjs
+        continue-on-error: true
+      - name: Utility Trailer
+        run: node scripts/update-utility.mjs
+        continue-on-error: true
+      - name: Prestige Trailers
+        run: node scripts/update-prestige.mjs
+        continue-on-error: true
       - name: Commit if changed
         run: |
-          for f in data/ta.json data/freightliner.json data/volvo.json; do [ -f "$f" ] && git add "$f"; done
+          for f in data/ta.json data/freightliner.json data/volvo.json data/boss.json data/utility.json data/prestige.json; do [ -f "$f" ] && git add "$f"; done
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update TA, Freightliner and Volvo locations"
+          git commit -m "Update brand locations"
           git pull --rebase origin main
           git push
