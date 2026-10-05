@@ -693,6 +693,8 @@
   --utility: #6A1B9A;       /* Utility Trailer dealer pins */
   --prestige: #2E7D32;      /* Prestige Trailers dealer pins */
   --timpte: #E66C2A;        /* Timpte pins (Timpte orange) */
+  --thermoking: #4FC3F7;    /* Thermo King dealer pins (light blue, navy letters) */
+  --carrier: #37474F;       /* Carrier Transicold dealer pins (charcoal) */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -971,7 +973,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   ]).addTo(map);
   const layer = L.layerGroup().addTo(map);
 
-  // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte ----------
+  // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier ----------
   // Each brand's data/<key>.json is refreshed weekly from that company's own locator by a GitHub Action.
   const brandIcon = (b) =>
     L.divIcon({ className: "", html: `<div class="pin brand${b.letter.length > 1 ? " two" : ""}" style="--b:var(${b.color});--bt:${b.text}"><span>${b.letter}</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
@@ -1177,6 +1179,48 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     </div>`;
   }
 
+  function thermokingPopup(s, checked) {
+    const svc = (s.services || []).filter((n) => !/^drop yard$/i.test(n));
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">Thermo King dealer${s.blueTrack ? " · Blue Track" : ""}</div>
+      ${s.blueTrack ? `<div class="note">Blue Track: Thermo King's top service level, with extended hours and express service.</div>` : ""}
+      <div class="caps">
+        ${cap(s.truckTrailer, "Truck and trailer service", svc.join(", "))}
+        ${cap(/24/.test(s.hoursNote || ""), "24-hour service", s.hoursNote || "", "Yes", "Not listed")}
+        ${cap(s.dropYard, "Drop yard", "", "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(dayRanges(s.hours) ? [["Hours", dayRanges(s.hours)]] : [])}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.website, "Dealer website")}
+      ${linkRow(s.url, "Dealer page on thermoking.com")}
+      ${srcRow("Thermo King's dealer directory", checked)}
+    </div>`;
+  }
+
+  function carrierPopup(s, checked) {
+    const svc = (s.services || []).filter((n) => !/^(24\/7|Mobile Service|APU)$/.test(n));
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">Carrier Transicold dealer${s.level ? " · " + esc(s.level) : ""}</div>
+      ${s.mobileOnly ? `<div class="note">Mobile dealer with no shop address. The pin marks the area it covers, not a building.</div>` : ""}
+      <div class="caps">
+        ${cap(s.apu, "ComfortPro APU dealer", "", "Yes", "Not listed")}
+        ${cap(s.truck || s.trailer, "Reefer service", svc.join(", "), "Yes", "Not listed")}
+        ${cap(s.mobile, "Mobile service", "", "Yes", "Not listed")}
+        ${cap(s.allDay, "24/7", "", "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(dayRanges(s.hours) ? [["Hours", dayRanges(s.hours)]] : [], s.note ? `<div>${esc(s.note)}</div>` : "")}
+      ${s.address ? addrRow(s) : `<div class="row">${esc(s.city)}, ${esc(s.state)}</div>`}
+      ${phoneRow("", s.phone)}
+      ${phoneRow("", s.phone2)}
+      ${linkRow(s.website, "Dealer website")}
+      ${linkRow("https://locator.ttdealers.carrier.com/", "Carrier Transicold dealer locator")}
+      ${srcRow("Carrier Transicold's dealer locator", checked)}
+    </div>`;
+  }
+
   function lovesPopup(s, checked) {
     const title = s.type === "Truck Service" ? `Love's Truck Care / Speedco: ${s.name}` : `Love's ${s.type}: ${s.name}`;
     const where = [s.highway, s.exit && `Exit ${s.exit}`].filter(Boolean).join(", ");
@@ -1219,6 +1263,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     { key: "utility", label: "Utility Trailer", letter: "U", color: "--utility", text: "#fff", popup: utilityPopup, z: -100 },
     { key: "prestige", label: "Prestige Trailers", letter: "P", color: "--prestige", text: "#fff", popup: prestigePopup, z: -200 },
     { key: "timpte", label: "Timpte", letter: "Ti", color: "--timpte", text: "#fff", popup: timptePopup, z: -300 },
+    { key: "thermoking", label: "Thermo King", letter: "TK", color: "--thermoking", text: "#0B1F33", popup: thermokingPopup, z: -400 },
+    { key: "carrier", label: "Carrier Transicold", letter: "C", color: "--carrier", text: "#fff", popup: carrierPopup, z: -500 },
   ];
   const brandCtl = L.control({ position: "topright" });
   brandCtl.onAdd = () => {
