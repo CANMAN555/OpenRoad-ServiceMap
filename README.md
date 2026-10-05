@@ -16,6 +16,7 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 
 - **Along a route:** search 3 to 25 miles each side of a route between two places.
 - **Near the truck:** search around an address, town, coordinates, or the phone's location.
+- **City suggestions as you type** in From, To and Truck location, and they still match with typos ("omaha nebraksa" finds Omaha, NE). Picking one skips the online lookup.
 - **Route mile for every result**, plus how far off route it is.
 - **Tap-to-call** numbers, hours, a 24/7 filter, and a "has phone number" filter.
 - **Copy info** button that copies name, phone, address, route mile and coordinates for dispatch.
@@ -27,6 +28,8 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - A box at the top right of the map turns each brand on or off.
 - **Fix this listing** link on every result, so anyone can correct the data on OpenStreetMap.
 - Works on phones, with light and dark themes.
+
+<img src="screenshots/city-suggestions.png" alt="City suggestions under the From box in light and dark mode" width="820">
 
 <img src="screenshots/loves-popups.png" alt="Love's popups for a fuel and shop stop, a fuel-only stop and a Speedco repair shop" width="820">
 
@@ -44,6 +47,7 @@ It is one static file (`index.html`) with no server and no API keys, so it can b
 | --- | --- |
 | Map tiles | Esri World Imagery satellite with Esri road and place labels, via Leaflet 1.9.4 |
 | Place search | Nominatim (US, Canada, Mexico) |
+| City suggestions | `data/places.json`: every U.S. city, town and CDP from the Census Bureau's 2024 Gazetteer and population estimates (public domain), built by `scripts/build-places.mjs` |
 | Route | OSRM public demo server, driving profile |
 | Vendor search | Overpass API, searched in a corridor along the route |
 
