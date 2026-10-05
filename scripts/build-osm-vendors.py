@@ -90,12 +90,58 @@ class Builder(osmium.SimpleHandler):
         self.keep(f"relation/{r.id}", (s + n) / 2, (w + e) / 2, r, t)
 
 
+def dedupe(items):
+    """Drop repeats of one business mapped twice, such as a truck stop drawn as both a point and a
+    building outline: same name and kind of business, under 250 m apart. Keeps the one with more details."""
+    def kind(t):
+        return t.get("shop") or t.get("amenity") or ""
+    cell = 0.005  # about 500 m
+    grid = {}
+    for key, (lat, lon, ts, tags) in items.items():
+        if tags.get("name"):
+            grid.setdefault((int(lat // cell), int(lon // cell)), []).append(key)
+    drop = set()
+    for key, (lat, lon, ts, tags) in items.items():
+        if key in drop or not tags.get("name"):
+            continue
+        ga, go = int(lat // cell), int(lon // cell)
+        for i in (-1, 0, 1):
+            for j in (-1, 0, 1):
+                for other in grid.get((ga + i, go + j), []):
+                    if other == key or other in drop:
+                        continue
+                    olat, olon, _, otags = items[other]
+                    if otags.get("name", "").lower() != tags["name"].lower() or kind(otags) != kind(tags):
+                        continue
+                    if haversine(lat, lon, olat, olon) > 250:
+                        continue
+                    # keep the record with more tags; on a tie keep the point (node) so pins sit on the pump
+                    loser = other if (len(otags), other.startswith("node/")) <= (len(tags), key.startswith("node/")) else key
+                    drop.add(loser)
+                    if loser == key:
+                        break
+                if key in drop:
+                    break
+            if key in drop:
+                break
+    for k in drop:
+        del items[k]
+    return len(drop)
+
+
+def haversine(lat1, lon1, lat2, lon2):
+    r = math.pi / 180
+    a = math.sin((lat2 - lat1) * r / 2) ** 2 + math.cos(lat1 * r) * math.cos(lat2 * r) * math.sin((lon2 - lon1) * r / 2) ** 2
+    return 2 * 6371008.8 * math.asin(math.sqrt(a))
+
+
 def main(paths):
     b = Builder()
     for p in paths:
         b.apply_file(p, locations=True)
         b.way_box.clear()
         print(f"{p}: {len(b.items)} listings so far", flush=True)
+    print(f"Removed {dedupe(b.items)} duplicate listings", flush=True)
     if len(b.items) < 1000 and not os.environ.get("ALLOW_SMALL"):
         sys.exit(f"Only {len(b.items)} listings found; refusing to replace the data with a partial build.")
 
