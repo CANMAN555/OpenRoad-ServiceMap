@@ -1,0 +1,9 @@
+fp-sitemap-index.xml 200 286 https://branches.fleetpride.com/sitemap/sitemap_index.xml
+fp-api-domain.json 200 75107 https://maps.branches.fleetpride.com/api/getAsyncLocations?template=domain&level=domain
+fp-api-search.json 200 1837861 https://maps.branches.fleetpride.com/api/getAsyncLocations?template=search&level=search&radius=5000&lat=39.8&lng=-98.5&limit=2000
+stm-e-653.json 200 1262 https://stmtires.com/wp-json/stm/v1/getLocationByEntityId?entityId=653
+stm-e-STMP-726.json 200 1490 https://stmtires.com/wp-json/stm/v1/getLocationByEntityId?entityId=STMP-726
+stm-e-STM-106.json 200 1366 https://stmtires.com/wp-json/stm/v1/getLocationByEntityId?entityId=STM-106
+stm-search-memphis.json 200 331968 https://stmtires.com/wp-json/stm/v1/searchLocations?lat=35.06&long=-89.93
+fp sitemaps: https://branches.fleetpride.com/sitemap/sitemap.xml.gz
+fp branch pages: 0
