@@ -1,27 +1,30 @@
 import { writeFile, mkdir } from "node:fs/promises";
-import { chromium } from "playwright";
 await mkdir("probe/out", { recursive: true });
 const UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36";
+// Strip anything that looks like an access token before saving, so nothing secret is committed.
+const redact = (t) => t.replace(/pk\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g, "pk.REDACTED").replace(/(key|token|apikey|api_key)(["'=:\s]+)[A-Za-z0-9_\-]{16,}/gi, "$1$2REDACTED").replace(/AIza[0-9A-Za-z_\-]{30,}/g, "AIzaREDACTED");
 const log = [];
 const P = (s) => { console.log(s); log.push(s); };
-for (const u of ["https://branches.fleetpride.com/robots.txt", "https://branches.fleetpride.com/sitemap.xml", "https://branches.fleetpride.com/", "https://branches.fleetpride.com/tx/dallas/", "https://stmtires.com/robots.txt", "https://stmtires.com/sitemap_index.xml", "https://stmtires.com/wp-sitemap.xml", "https://stmtires.com/all-locations/", "https://stmtires.com/locations/store-249/"]) {
-  try { const r = await fetch(u, { headers: { "user-agent": UA } }); const t = await r.text(); P(`GET ${u} ${r.status} ${t.length}`); await writeFile("probe/out/" + u.replace(/[^a-z0-9]+/gi, "_").slice(8, 80) + ".txt", t); } catch (e) { P(`GET ${u} ERR ${e.message}`); }
+const urls = {
+  "fp-robots.txt": "https://branches.fleetpride.com/robots.txt",
+  "fp-sitemap.xml": "https://branches.fleetpride.com/sitemap.xml",
+  "fp-index.html": "https://branches.fleetpride.com/",
+  "fp-dallas.html": "https://branches.fleetpride.com/tx/dallas/",
+  "stm-ids.json": "https://stmtires.com/wp-json/stm/v1/getAllLocationEntityIds",
+  "stm-all.html": "https://stmtires.com/all-locations/",
+  "stm-249.html": "https://stmtires.com/locations/store-249/",
+  "stm-main.js": "https://stmtires.com/wp-content/themes/duffcapital_external/dist/front/main.da6df6fa.js",
+};
+for (const [n, u] of Object.entries(urls)) {
+  try { const r = await fetch(u, { headers: { "user-agent": UA } }); const t = redact(await r.text()); await writeFile("probe/out/" + n, t); P(`${n} ${r.status} ${t.length} ${u}`); }
+  catch (e) { P(`${n} ERR ${e.message}`); }
 }
-const b = await chromium.launch();
-const pages = { fp: ["https://branches.fleetpride.com/tx/dallas/"], stm: ["https://stmtires.com/all-locations/", "https://stmtires.com/locations/"] };
-let n = 0;
-for (const [tag, urls] of Object.entries(pages)) for (const url of urls) {
-  const ctx = await b.newContext({ userAgent: UA }); const p = await ctx.newPage();
-  p.on("response", async (r) => {
-    const ct = r.headers()["content-type"] || ""; const u = r.url();
-    if (/json|xml/.test(ct) || /api|locat|store|branch|dealer/i.test(u)) {
-      if (/\.(png|jpg|svg|woff2?|css|gif)(\?|$)/.test(u)) return;
-      try { const body = await r.body(); const f = `${tag}-${++n}.txt`; await writeFile("probe/out/" + f, `${r.request().method()} ${u}\n${r.request().postData() || ""}\n\n` + body.toString()); P(`${tag} ${r.status()} ${ct.split(";")[0]} ${body.length} ${u.slice(0, 200)} -> ${f}`); } catch {}
-    }
-  });
-  try { const r = await p.goto(url, { waitUntil: "networkidle", timeout: 60000 }); P(`PAGE ${url} ${r?.status()} final=${p.url()}`); await p.waitForTimeout(4000);
-    await writeFile(`probe/out/${tag}-page-${url.split("/").pop()}.html`, await p.content()); } catch (e) { P(`PAGE ${url} ERR ${e.message.slice(0, 200)}`); }
-  await ctx.close();
-}
-await b.close();
+// Follow the first branch link found on the Dallas page.
+try {
+  const { readFile } = await import("node:fs/promises");
+  const d = await readFile("probe/out/fp-dallas.html", "utf8");
+  const links = [...new Set([...d.matchAll(/href="([^"]*\/tx\/dallas\/[^"#?]+)"/g)].map((m) => m[1]))];
+  P("fp dallas links: " + links.slice(0, 10).join(" "));
+  if (links[0]) { const u = new URL(links[0], "https://branches.fleetpride.com/tx/dallas/").href; const r = await fetch(u, { headers: { "user-agent": UA } }); const t = redact(await r.text()); await writeFile("probe/out/fp-branch.html", t); P(`fp-branch.html ${r.status} ${t.length} ${u}`); }
+} catch (e) { P("fp branch ERR " + e.message); }
 await writeFile("probe/out/log.txt", log.join("\n") + "\n");
