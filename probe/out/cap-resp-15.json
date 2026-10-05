@@ -1,0 +1,2 @@
+https://locator.ttdealers.carrier.com/api/countrycitystate/GetOnlyRegions?ApiAccessKey=9ZQxFMZB4o4gWvBnAlLZEQpuFOFWNEyzm65aV5huSjc=&MobAppKey=com.carriertransicold.dealerlocator
+{"lastUpdatedDate":"","regions":[{"code":"US","name":"USA/Canada/Mexico"},{"code":"EU","name":"Europe"},{"code":"CA","name":"Central America"},{"code":"SA","name":"South America"},{"code":"AS","name":"Asia"},{"code":"ME","name":"Middle East"},{"code":"AF","name":"Africa"},{"code":"AU","name":"Australasia"},{"code":"AAA","name":"Paraguai"},{"code":"GGY","name":"Paraguay"}]}
