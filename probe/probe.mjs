@@ -10,14 +10,7 @@ async function get(url, name, opts = {}) {
     return buf.toString("utf8");
   } catch (e) { console.log(name, "ERR", e.message); return ""; }
 }
-const links = (html, re) => [...new Set([...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]).filter((u) => re.test(u)))];
-const boss = await get("https://bosstruckshops.com/service-centers-list/", "boss-list.html");
-console.log("boss files", links(boss, /\.(xlsx?|csv|pdf|json)(\?|$)/i));
-await get("https://bosstruckshops.com/locations/grand-island-ne-boss-truck-shop/", "boss-gi.html");
-await get("https://bosstruckshops.com/wp-sitemap.xml", "boss-sitemap.xml");
-await get("https://bosstruckshops.com/sitemap_index.xml", "boss-sitemap2.xml");
-await get("https://www.utilitytrailer.com/dealers", "util.html");
-const pr = await get("https://prestigetrailers.com/shopping-tools-find-dealer/", "prestige.html");
-console.log("prestige js", links(pr, /\.js|json|dealer|api/i).slice(0, 40));
-await get("https://timpte.com/locations/", "timpte-loc.html");
-await get("https://timpteequipmenttrailers.com/find-a-dealer/", "timpte-eq.html");
+await get("https://timpte.com/wp-content/themes/plumbweb-child/_assets/_dist/locations-js.js?ver=1790977616", "timpte-locations.js");
+await get("https://prestigetrailers.com/wp-content/themes/prestige-wp/dist/js/main-c87870f2.js?ver=7.0.6", "prestige-main.js");
+await get("https://bosstruckshops.com/locations-sitemap.xml", "boss-locations-sitemap.xml");
+await get("https://www.lodeking.com/shopping-tools-find-dealer", "lodeking-dealer.html");
