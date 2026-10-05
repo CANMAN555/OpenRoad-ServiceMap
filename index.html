@@ -1156,6 +1156,26 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     </div>`;
   }
 
+  function timptePopup(s, checked) {
+    const csc = s.type === "Factory Direct Customer Support Center";
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${csc ? "Timpte Factory Direct Customer Support Center" : "Timpte equipment trailer dealer"}</div>
+      ${csc
+        ? `<div class="note">Timpte-owned shop. Timpte says its support centers repair all makes of trailers and stock genuine Timpte parts.</div>`
+        : `<div class="note">Sells Timpte equipment trailers. Timpte's list does not say whether this dealer does repairs. Call to ask.</div>`}
+      <div class="caps">
+        ${cap(csc, "Trailer repair", csc ? "Brakes, DOT inspections, lights and wiring, welding, alignment, tarps, doors" : "", "Yes", "Call to check")}
+      </div>
+      <div class="hrs"><div>Hours not listed. Call to confirm.</div></div>
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.website, "Dealer website")}
+      ${linkRow("https://timpteequipmenttrailers.com/find-a-dealer", "Timpte dealer locator")}
+      ${srcRow("Timpte's dealer locator", checked)}
+    </div>`;
+  }
+
   function lovesPopup(s, checked) {
     const title = s.type === "Truck Service" ? `Love's Truck Care / Speedco: ${s.name}` : `Love's ${s.type}: ${s.name}`;
     const where = [s.highway, s.exit && `Exit ${s.exit}`].filter(Boolean).join(", ");
@@ -1197,6 +1217,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     { key: "boss", label: "Boss Truck Shops", letter: "B", color: "--boss", text: "#fff", popup: bossPopup, z: 250 },
     { key: "utility", label: "Utility Trailer", letter: "U", color: "--utility", text: "#fff", popup: utilityPopup, z: -100 },
     { key: "prestige", label: "Prestige Trailers", letter: "P", color: "--prestige", text: "#fff", popup: prestigePopup, z: -200 },
+    { key: "timpte", label: "Timpte", letter: "Ti", color: "--timpte", text: "#fff", popup: timptePopup, z: -300 },
   ];
   const brandCtl = L.control({ position: "topright" });
   brandCtl.onAdd = () => {
