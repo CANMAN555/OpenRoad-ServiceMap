@@ -695,6 +695,8 @@
   --timpte: #E66C2A;        /* Timpte pins (Timpte orange) */
   --thermoking: #4FC3F7;    /* Thermo King dealer pins (light blue, navy letters) */
   --carrier: #37474F;       /* Carrier Transicold dealer pins (charcoal) */
+  --fleetpride: #8E1B3A;    /* FleetPride pins (maroon) */
+  --stm: #121212;           /* Southern Tire Mart pins (black, red letters) */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -980,7 +982,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       })
     : L.layerGroup()).addTo(map);
 
-  // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier ----------
+  // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier, FleetPride, Southern Tire Mart ----------
   // Each brand's data/<key>.json is refreshed weekly from that company's own locator by a GitHub Action.
   const brandIcon = (b) =>
     L.divIcon({ className: "", html: `<div class="pin brand${b.letter.length > 1 ? " two" : ""}" style="--b:var(${b.color});--bt:${b.text}"><span>${b.letter}</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
@@ -1206,6 +1208,63 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     </div>`;
   }
 
+  function fleetpridePopup(s, checked) {
+    const svc = s.services || [];
+    const has = (re) => svc.some((n) => re.test(n));
+    const affiliate = s.type === "Service Affiliates", truckpro = /^TruckPro/i.test(s.brand || "");
+    const kind = affiliate ? "FleetPride service affiliate" : s.type === "Service" ? "FleetPride service center"
+      : truckpro ? "TruckPro parts store, a FleetPride company" : "FleetPride heavy-duty parts branch";
+    const repairs = svc.filter((n) => !/mobile|towing|roadside/i.test(n));
+    return `<div class="lv">
+      <h4>${esc(affiliate ? s.brand : s.name)}</h4>
+      <div class="t">${esc(kind)}</div>
+      ${affiliate ? `<div class="note">Independent repair shop in FleetPride's service network.</div>` : ""}
+      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ""}
+      <div class="caps">
+        ${cap(s.type === "Parts", "Truck and trailer parts", "", "Yes", "Not listed")}
+        ${cap(repairs.length > 0, "Repair services", repairs.join(", "), "Yes", "Not listed")}
+        ${cap(has(/mobile|roadside/i), "Mobile or roadside service", svc.filter((n) => /mobile|roadside/i.test(n)).join(", "), "Yes", "Not listed")}
+        ${cap(has(/towing/i), "Towing", "", "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(dayRanges(s.hours) ? [["Hours", dayRanges(s.hours)]] : [])}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${phoneRow("Mobile service", s.mobilePhone)}
+      ${linkRow(s.url, "Branch page on fleetpride.com")}
+      ${srcRow("FleetPride's branch locator", checked)}
+    </div>`;
+  }
+
+  function stmPopup(s, checked) {
+    // The two lists repeat each other in different wording; drop "Roadside Assistance - " prefixes and case-only repeats.
+    const seen = new Set(), svc = [];
+    for (const n of [...(s.commercialServices || []), ...(s.specialties || [])].map((x) => x.replace(/^Roadside Assistance - /i, ""))) {
+      const k = n.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!seen.has(k)) { seen.add(k); svc.push(n); }
+    }
+    const has = (re) => svc.some((n) => re.test(n));
+    const short = (list) => (list.length > 8 ? list.slice(0, 8).join(", ") + `, and ${list.length - 8} more` : list.join(", "));
+    const pilot = s.kind === "Southern Tire Mart at Pilot Flying J", wholesale = s.kind === "STM Wholesale";
+    const repairs = svc.filter((n) => /brake|inspection|maintenance|repair|electrical|alternator|starter|diagnos|suspension|alignment|wheel-end|weld|valve/i.test(n));
+    const mobile = svc.filter((n) => /24\/7|emergency|road ?side|mobile|lockout|jump start|fuel/i.test(n));
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc(s.kind)} · Store ${esc(s.id.replace(/^STM[A-Z]*-/, ""))}</div>
+      ${pilot ? `<div class="note">Truck tire and service shop at the Pilot Flying J travel center.</div>` : ""}
+      ${wholesale ? `<div class="note">Wholesale tire distribution. Call before sending a truck.</div>` : ""}
+      <div class="caps">
+        ${cap(pilot || has(/truck tire|commercial truck/i), "Commercial truck tires", "", "Yes", "Not listed")}
+        ${cap(repairs.length > 0, "Truck repair and maintenance", short(repairs), "Yes", "Not listed")}
+        ${cap(mobile.length > 0, "Mobile or roadside service", short(mobile), "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(dayRanges(s.hours) ? [["Hours", dayRanges(s.hours)]] : [])}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.url, "Store page on stmtires.com")}
+      ${srcRow("Southern Tire Mart's store locator", checked)}
+    </div>`;
+  }
+
   function carrierPopup(s, checked) {
     const svc = (s.services || []).filter((n) => !/^(24\/7|Mobile Service|APU)$/.test(n));
     return `<div class="lv">
@@ -1272,6 +1331,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     { key: "timpte", label: "Timpte", letter: "Ti", color: "--timpte", text: "#fff", popup: timptePopup, z: -300 },
     { key: "thermoking", label: "Thermo King", letter: "TK", color: "--thermoking", text: "#0B1F33", popup: thermokingPopup, z: -400 },
     { key: "carrier", label: "Carrier Transicold", letter: "C", color: "--carrier", text: "#fff", popup: carrierPopup, z: -500 },
+    { key: "fleetpride", label: "FleetPride", letter: "FP", color: "--fleetpride", text: "#fff", popup: fleetpridePopup, z: -50 },
+    { key: "stm", label: "Southern Tire Mart", letter: "ST", color: "--stm", text: "#FF5252", popup: stmPopup, z: 150 },
   ];
   const brandCtl = L.control({ position: "topright" });
   brandCtl.onAdd = () => {

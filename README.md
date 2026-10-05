@@ -31,6 +31,8 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **Timpte** as orange Ti pins: Timpte's own Factory Direct Customer Support Centers (trailer repair for all makes) and Timpte equipment trailer dealers.
 - **Thermo King dealers** as light blue **TK** pins, for reefer and APU work. Popups show the services offered, whether the dealer is Blue Track (Thermo King's top service level), 24-hour mobile service, drop yard and hours.
 - **Carrier Transicold dealers** as charcoal **C** pins, including **ComfortPro APU** dealers. Popups say whether the dealer does APUs, reefer service, mobile service and 24/7, plus hours and dealer level.
+- **FleetPride** as maroon **FP** pins: heavy-duty parts branches, FleetPride service centers, TruckPro stores and FleetPride's independent service affiliates. Popups show parts, repair services, mobile or roadside service, towing, hours and the mobile service phone.
+- **Southern Tire Mart** as black **ST** pins with red letters, including its truck tire and service shops at Pilot Flying J travel centers. Popups show commercial truck tires, truck repair and maintenance, mobile or roadside service, and hours.
 - A box at the top right of the map turns each brand on or off.
 - **Fix this listing** link on every result, so anyone can correct the data on OpenStreetMap.
 - Works on phones, with light and dark themes.
@@ -44,6 +46,8 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 <img src="screenshots/trailer-popups.png" alt="Popups for a Boss Truck Shop, a Utility Trailer dealer, a Prestige dealer and a Timpte support center" width="820">
 
 <img src="screenshots/reefer-popups.png" alt="Popups for a Thermo King Blue Track dealer, a Carrier Transicold dealer and a Carrier mobile dealer" width="820">
+
+<img src="screenshots/parts-tire-popups.png" alt="Popups for a FleetPride service center, a FleetPride service affiliate, a Southern Tire Mart store and a Southern Tire Mart at Pilot Flying J" width="820">
 
 <img src="screenshots/brand-pins.png" alt="Brand pins with the brand on/off box" width="520">
 
@@ -93,6 +97,10 @@ The [Update brand locations](.github/workflows/update-vendors.yml) workflow runs
 | `data/timpte.json` | Timpte's dealer locator (timpteequipmenttrailers.com/find-a-dealer) | `scripts/update-timpte.mjs` |
 | `data/thermoking.json` | Every U.S. dealer page in the thermoking.com/dealers directory | `scripts/update-thermoking.mjs` |
 | `data/carrier.json` | Carrier Transicold's dealer locator feed (locator.ttdealers.carrier.com), U.S. dealers only | `scripts/update-carrier.mjs` |
+| `data/fleetpride.json` | FleetPride's branch locator (branches.fleetpride.com) | `scripts/update-fleetpride.mjs` |
+| `data/stm.json` | Southern Tire Mart's store locator (stmtires.com) | `scripts/update-stm.mjs` |
+
+Some Southern Tire Mart store coordinates are several miles off (store 249 on Lamar Avenue in Memphis was placed downtown), so every store address is also checked with the U.S. Census geocoder, and the Census point is used when the two are more than 3 miles apart.
 
 Freightliner's locator often gives coordinates only to the ZIP code, so ExpressPoint sites take Love's exact coordinates and other addresses are placed with the free U.S. Census geocoder. A few addresses the geocoder can't match keep Freightliner's coordinates and may sit a short distance from the real building.
 

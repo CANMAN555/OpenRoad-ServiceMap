@@ -1,4 +1,4 @@
-name: Update brand locations (TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier)
+name: Update brand locations (TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier, FleetPride, Southern Tire Mart)
 
 on:
   workflow_dispatch:
@@ -17,6 +17,8 @@ on:
       - scripts/update-timpte.mjs
       - scripts/update-thermoking.mjs
       - scripts/update-carrier.mjs
+      - scripts/update-fleetpride.mjs
+      - scripts/update-stm.mjs
       - .github/workflows/update-vendors.yml
 
 permissions:
@@ -62,9 +64,15 @@ jobs:
       - name: Carrier Transicold
         run: node scripts/update-carrier.mjs
         continue-on-error: true
+      - name: FleetPride
+        run: node scripts/update-fleetpride.mjs
+        continue-on-error: true
+      - name: Southern Tire Mart
+        run: node scripts/update-stm.mjs
+        continue-on-error: true
       - name: Commit if changed
         run: |
-          for f in data/ta.json data/freightliner.json data/volvo.json data/boss.json data/utility.json data/prestige.json data/timpte.json data/thermoking.json data/carrier.json; do [ -f "$f" ] && git add "$f"; done
+          for f in data/ta.json data/freightliner.json data/volvo.json data/boss.json data/utility.json data/prestige.json data/timpte.json data/thermoking.json data/carrier.json data/fleetpride.json data/stm.json; do [ -f "$f" ] && git add "$f"; done
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

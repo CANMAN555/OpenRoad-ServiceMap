@@ -2,7 +2,7 @@
 // (freightliner.com/dealer-search, which includes dealers, service points and ExpressPoint
 // locations) and writes data/freightliner.json. Run by .github/workflows/update-vendors.yml.
 import { readFile } from "node:fs/promises";
-import { clean, fetchText, formatPhone, span, UA, writeData } from "./lib.mjs";
+import { censusGeocode, clean, fetchText, formatPhone, span, writeData } from "./lib.mjs";
 
 const API = "https://www.freightliner.com/umbraco/backoffice/dealers/geo-search?";
 const CAP = 1000; // the locator returns at most this many results per box
@@ -47,33 +47,6 @@ async function lovesCoords() {
   } catch {
     return new Map();
   }
-}
-async function censusGeocode(list) {
-  const out = new Map();
-  const csvField = (v) => `"${String(v || "").replace(/"/g, "'")}"`;
-  for (let i = 0; i < list.length; i += 200) {
-    const csv = list.slice(i, i + 200).map((s) => [s.id, s.street, s.city, s.state, s.zip].map(csvField).join(",")).join("\n");
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const form = new FormData();
-      form.append("addressFile", new Blob([csv], { type: "text/csv" }), "addresses.csv");
-      form.append("benchmark", "Public_AR_Current");
-      try {
-        const r = await fetch("https://geocoding.geo.census.gov/geocoder/locations/addressbatch", { method: "POST", body: form, headers: { "User-Agent": UA } });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        for (const line of (await r.text()).split("\n")) {
-          const cols = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
-          if (cols[2] !== "Match" || !cols[5]) continue;
-          const [lon, lat] = cols[5].split(",").map(Number);
-          if (Number.isFinite(lat) && Number.isFinite(lon)) out.set(cols[0], [lat, lon]);
-        }
-        break;
-      } catch (e) {
-        console.warn(`Census geocoder (batch ${i / 200 + 1}, try ${attempt + 1}):`, e.message);
-        await new Promise((res) => setTimeout(res, 10000 * (attempt + 1)));
-      }
-    }
-  }
-  return out;
 }
 
 const dept = (row, name) => (row.departments || []).find((d) => clean(d.name) && d.name.toLowerCase() === name);
