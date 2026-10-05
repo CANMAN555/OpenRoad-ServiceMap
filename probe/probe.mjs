@@ -3,19 +3,17 @@ import { chromium } from "playwright";
 await mkdir("probe/out", { recursive: true });
 const UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36";
 const urls = {
-  "tk-nc.html": "https://www.thermoking.com/dealers/north-america/us/nc",
-  "tk-us.html": "https://www.thermoking.com/dealers/north-america/us",
-  "tk-na.html": "https://www.thermoking.com/dealers/north-america",
-  "tk-sitemap.xml": "https://www.thermoking.com/sitemap.xml",
-  "ca-apu.html": "https://www.carrier.com/truck-trailer/en/north-america/products/na-truck-trailer/apu",
-  "ca-locator.html": "https://www.carrier.com/truck-trailer/en/north-america/dealer-locator/",
+  "tk-loc.html": "https://www.thermoking.com/dealers/north-america/us/nc/3740-centurion-dr",
+  "tk-dsitemap.xml": "https://www.thermoking.com/dealers/sitemap.xml",
+  "ca-dl.html": "https://www.carrier.com/truck-trailer/en/north-america/contact-us/dealer-locator/",
+  "ca-tt.html": "https://locator.ttdealers.carrier.com/",
 };
 for (const [n, u] of Object.entries(urls)) {
   try { const r = await fetch(u, { headers: { "user-agent": UA }, redirect: "follow" }); const t = await r.text(); await writeFile("probe/out/" + n, r.url + "\n" + t); console.log(n, r.status, r.url, t.length); }
   catch (e) { console.log(n, e.message); }
 }
 const b = await chromium.launch();
-for (const [tag, url] of [["tkp", "https://www.thermoking.com/dealers/north-america/us/nc"], ["cap", "https://www.carrier.com/truck-trailer/en/north-america/dealer-locator/"]]) {
+for (const [tag, url] of [["cap", "https://locator.ttdealers.carrier.com/"], ["cap2", "https://www.carrier.com/truck-trailer/en/north-america/contact-us/dealer-locator/"]]) {
   const p = await b.newPage({ userAgent: UA });
   const log = [];
   p.on("response", async (r) => {
