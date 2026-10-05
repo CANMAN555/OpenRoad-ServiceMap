@@ -1,0 +1,2 @@
+User-agent: *
+Sitemap: https://branches.fleetpride.com/sitemap/sitemap_index.xml

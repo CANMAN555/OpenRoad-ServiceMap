@@ -1,0 +1,10 @@
+fp-robots.txt 200 80 https://branches.fleetpride.com/robots.txt
+fp-sitemap.xml 200 107715 https://branches.fleetpride.com/sitemap.xml
+fp-index.html 200 10108704 https://branches.fleetpride.com/
+fp-dallas.html 200 4942148 https://branches.fleetpride.com/tx/dallas/
+stm-ids.json 200 2869 https://stmtires.com/wp-json/stm/v1/getAllLocationEntityIds
+stm-all.html 200 1907871 https://stmtires.com/all-locations/
+stm-249.html 200 171934 https://stmtires.com/locations/store-249/
+stm-main.js 200 396341 https://stmtires.com/wp-content/themes/duffcapital_external/dist/front/main.da6df6fa.js
+fp dallas links: https://branches.fleetpride.com/tx/dallas/truckparts-dt.html https://branches.fleetpride.com/tx/dallas/truckparts-dls-sc.html https://branches.fleetpride.com/tx/dallas/truckparts-12.html
+fp-branch.html 200 4939506 https://branches.fleetpride.com/tx/dallas/truckparts-dt.html
