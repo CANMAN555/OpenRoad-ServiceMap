@@ -25,6 +25,10 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **TA, Petro and TA Express travel centers** as red TA pins. Popups show truck diesel, whether there is a TA Truck Service shop (bays, services, in-bay hours), tire service, and whether the shop uses TA's **eShop 2.0** portal or the original eShop.
 - **Freightliner dealers and service points**, including Freightliner ExpressPoint at Love's and Speedco, as white FL pins. Popups show repair, tire, road service and towing, Elite Support, and service and parts hours.
 - **Volvo Trucks dealers and service locations** as teal V pins. Popups show repair, Volvo Certified Uptime Center, road service, towing, tires, and service, parts and on-call hours.
+- **Boss Truck Shops** as blue B pins. Popups show the interstate exit, the truck stop it sits in, service bays, repair work, tire brands, roadside service trucks, hours, and Boss's 24-hour call center.
+- **Utility Trailer dealers** as purple U pins, with trailer repair, parts, Cargobull service and sales from Utility's dealer directory.
+- **Prestige Trailers dealers** as green P pins. Prestige's list doesn't say which dealers do repairs, so the popup says to call.
+- **Timpte** as orange Ti pins: Timpte's own Factory Direct Customer Support Centers (trailer repair for all makes) and Timpte equipment trailer dealers.
 - A box at the top right of the map turns each brand on or off.
 - **Fix this listing** link on every result, so anyone can correct the data on OpenStreetMap.
 - Works on phones, with light and dark themes.
@@ -35,7 +39,9 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 
 <img src="screenshots/brand-popups.png" alt="Popups for a TA with eShop 2.0, a TA with the original eShop, a Freightliner dealer and a Volvo dealer" width="820">
 
-<img src="screenshots/brand-pins.png" alt="Love's, TA, Freightliner and Volvo pins with the brand on/off box" width="520">
+<img src="screenshots/trailer-popups.png" alt="Popups for a Boss Truck Shop, a Utility Trailer dealer, a Prestige dealer and a Timpte support center" width="820">
+
+<img src="screenshots/brand-pins.png" alt="Brand pins with the brand on/off box" width="520">
 
 <img src="screenshots/mobile.png" alt="Phone screenshot" width="280">
 
@@ -57,17 +63,23 @@ Vendor types come from these OpenStreetMap tags: `shop=truck_repair`, `shop=tyre
 
 `data/loves.json` comes straight from Love's own store locator feed (the one behind loves.com/locations). The [Update Love's locations](.github/workflows/update-loves.yml) workflow runs `scripts/update-loves.mjs` every Monday and commits the file only when something changed, so addresses and phone numbers stay current without manual edits. Run it any time from the repo's Actions tab with "Run workflow".
 
-## TA, Freightliner and Volvo locations
+## Other brand locations
 
-The [Update TA, Freightliner and Volvo locations](.github/workflows/update-vendors.yml) workflow runs every Monday and writes one file per brand, each from that company's own site:
+The [Update brand locations](.github/workflows/update-vendors.yml) workflow runs every Monday and writes one file per brand, each from that company's own site:
 
 | File | Source | Script |
 | --- | --- | --- |
 | `data/ta.json` | Every location page listed in the ta-petro.com sitemap, plus the eShop 2.0 site list on [ta-petro.com/fleets/eshop-2](https://www.ta-petro.com/fleets/eshop-2) | `scripts/update-ta.mjs` |
 | `data/freightliner.json` | Freightliner's dealer search (freightliner.com/dealer-search) | `scripts/update-freightliner.mjs` |
 | `data/volvo.json` | Volvo Trucks' dealer locator feed (volvotrucks.us/find-a-dealer) | `scripts/update-volvo.mjs` |
+| `data/boss.json` | Every location page on bosstruckshops.com (locations sitemap and Service Centers List) | `scripts/update-boss.mjs` |
+| `data/utility.json` | Utility Trailer's dealer directory (utilitytrailer.com/dealers), U.S. dealers only | `scripts/update-utility.mjs` |
+| `data/prestige.json` | Prestige's Find a Dealer feed (prestigetrailers.com/shopping-tools-find-dealer), public U.S. dealers only | `scripts/update-prestige.mjs` |
+| `data/timpte.json` | Timpte's dealer locator (timpteequipmenttrailers.com/find-a-dealer) | `scripts/update-timpte.mjs` |
 
 Freightliner's locator often gives coordinates only to the ZIP code, so ExpressPoint sites take Love's exact coordinates and other addresses are placed with the free U.S. Census geocoder. A few addresses the geocoder can't match keep Freightliner's coordinates and may sit a short distance from the real building.
+
+Prestige's feed URL includes a site key, so the script reads it from Prestige's own page at run time instead of storing it here, and it keeps only business fields (no staff names or emails). Timpte's main site (timpte.com/locations) would also list Super Hopper grain trailer dealers, but its search currently returns nothing, so only the support centers and equipment trailer dealers are shown.
 
 ## Limits to know about
 
