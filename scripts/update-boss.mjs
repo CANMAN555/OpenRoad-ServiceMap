@@ -43,22 +43,31 @@ function parse(url, h) {
     name: decode(m[1]),
     items: all(/<li>([\s\S]*?)<\/li>/g, m[2]).map((x) => decode(x[1])).filter(Boolean),
   })).filter((g) => g.name);
-  // Address "7482 Bosselman Avenue, Grand Island, NE, USA" -> street / city / state
-  const parts = (fullAddr || "").split(",").map((x) => x.trim()).filter((x) => x && !/^(USA|United States)$/i.test(x));
+  // Address "7482 Bosselman Avenue, Grand Island, NE, USA" -> street / city / state / zip.
+  // The site's address strings vary ("..., KY, 42431", "Street City, AR 72301", "Boss Truck Shop, ...").
+  const parts = (fullAddr || "").split(",").map((x) => x.trim())
+    .filter((x) => x && !/^(USA|United States)$/i.test(x) && !/^boss truck shop$/i.test(x));
   let state = null, zip = null;
-  const last = parts[parts.length - 1] || "";
-  const sz = /^([A-Z]{2})(?:\s+(\d{5}))?$/.exec(last);
-  if (sz) { state = sz[1]; zip = sz[2] || null; parts.pop(); }
-  const city = parts.length > 1 ? parts.pop() : null;
+  if (/^\d{5}(-\d{4})?$/.test(parts[parts.length - 1] || "")) zip = parts.pop().slice(0, 5);
+  const sz = /^([A-Z]{2})(?:\s+(\d{5}))?(?:-\d{4})?$/.exec(parts[parts.length - 1] || "");
+  if (sz) { state = sz[1]; zip = zip || sz[2] || null; parts.pop(); }
+  const titleCity = (title || "").replace(/\s*[–-]\s*Boss Truck Shop.*$/i, "").split(",")[0].trim() || null;
   if (!state) {
     const t = /,\s*([A-Z]{2})\b/.exec(title || "");
     if (t) state = t[1];
   }
+  let city = parts.length > 1 ? parts.pop() : null;
+  let street = parts.join(", ");
+  if (!city && titleCity && street.toLowerCase().endsWith(" " + titleCity.toLowerCase())) {
+    street = street.slice(0, -titleCity.length).trim();
+    city = titleCity;
+  }
+  // "91 Free Henry Ford Rd Madisonville" with no comma before the city: leave the street as written.
   return {
     id: url.replace(/\/$/, "").split("/").pop(),
     name: title,
-    address: parts.join(", ") || null,
-    city: city || (title || "").split(",")[0] || null,
+    address: street || null,
+    city: city || titleCity,
     state,
     zip,
     phone,
