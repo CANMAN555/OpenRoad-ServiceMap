@@ -1312,13 +1312,16 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
   // ---------- tabs ----------
   function setMode(m) {
+    if (m === mode) return;
     mode = m;
     $("tab-route").setAttribute("aria-selected", m === "route");
     $("tab-spot").setAttribute("aria-selected", m === "spot");
     $("route-fields").hidden = m !== "route";
     $("spot-fields").hidden = m !== "spot";
     $("width-label").firstChild.textContent = m === "route" ? "Search width " : "Search radius ";
-    [...$("radius").options].forEach((o) => { o.textContent = o.value + (m === "route" ? " mi each side" : " mi around truck"); });
+    // Along a route: a narrow strip each side. Near the truck: a wide circle around it.
+    const opts = m === "route" ? [[3], [5, true], [10], [25]] : [[10, true], [50], [100], [200], [250]];
+    $("radius").innerHTML = opts.map(([v, sel]) => `<option value="${v}"${sel ? " selected" : ""}>${v} mi ${m === "route" ? "each side" : "around truck"}</option>`).join("");
   }
   $("tab-route").onclick = () => setMode("route");
   $("tab-spot").onclick = () => setMode("spot");
