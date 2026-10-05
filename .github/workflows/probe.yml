@@ -12,13 +12,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node scripts/update-ta.mjs
-        continue-on-error: true
-      - run: node scripts/update-freightliner.mjs
-        continue-on-error: true
-      - run: node scripts/update-volvo.mjs
-        continue-on-error: true
+      - run: node probe/probe.mjs
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f data/ta.json data/freightliner.json data/volvo.json && git commit -qm "probe output" && git push
+          git add -f probe/out && git commit -qm "probe output" && git push
