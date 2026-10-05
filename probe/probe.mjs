@@ -4,11 +4,11 @@ await mkdir("probe/out", { recursive: true });
 const UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36";
 const log = [];
 const P = (s) => { console.log(s); log.push(s); };
-for (const u of ["https://www.fleetpride.com/robots.txt", "https://www.southerntiremart.com/robots.txt", "https://www.fleetpride.com/sitemap.xml", "https://www.southerntiremart.com/sitemap.xml", "https://www.southerntiremart.com/sitemap_index.xml"]) {
-  try { const r = await fetch(u, { headers: { "user-agent": UA } }); const t = await r.text(); P(`GET ${u} ${r.status} ${t.length}`); await writeFile("probe/out/" + u.replace(/[^a-z0-9]+/gi, "_").slice(8, 80), t); } catch (e) { P(`GET ${u} ERR ${e.message}`); }
+for (const u of ["https://branches.fleetpride.com/robots.txt", "https://branches.fleetpride.com/sitemap.xml", "https://branches.fleetpride.com/", "https://branches.fleetpride.com/tx/dallas/", "https://stmtires.com/robots.txt", "https://stmtires.com/sitemap_index.xml", "https://stmtires.com/wp-sitemap.xml", "https://stmtires.com/all-locations/", "https://stmtires.com/locations/store-249/"]) {
+  try { const r = await fetch(u, { headers: { "user-agent": UA } }); const t = await r.text(); P(`GET ${u} ${r.status} ${t.length}`); await writeFile("probe/out/" + u.replace(/[^a-z0-9]+/gi, "_").slice(8, 80) + ".txt", t); } catch (e) { P(`GET ${u} ERR ${e.message}`); }
 }
 const b = await chromium.launch();
-const pages = { fp: ["https://www.fleetpride.com/branch-locator", "https://www.fleetpride.com/locations"], stm: ["https://www.southerntiremart.com/locations", "https://www.southerntiremart.com/store-locator"] };
+const pages = { fp: ["https://branches.fleetpride.com/tx/dallas/"], stm: ["https://stmtires.com/all-locations/", "https://stmtires.com/locations/"] };
 let n = 0;
 for (const [tag, urls] of Object.entries(pages)) for (const url of urls) {
   const ctx = await b.newContext({ userAgent: UA }); const p = await ctx.newPage();
