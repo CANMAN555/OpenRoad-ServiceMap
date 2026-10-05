@@ -29,6 +29,8 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **Utility Trailer dealers** as purple U pins, with trailer repair, parts, Cargobull service and sales from Utility's dealer directory.
 - **Prestige Trailers dealers** as green P pins. Prestige's list doesn't say which dealers do repairs, so the popup says to call.
 - **Timpte** as orange Ti pins: Timpte's own Factory Direct Customer Support Centers (trailer repair for all makes) and Timpte equipment trailer dealers.
+- **Thermo King dealers** as light blue **TK** pins, for reefer and APU work. Popups show the services offered, whether the dealer is Blue Track (Thermo King's top service level), 24-hour mobile service, drop yard and hours.
+- **Carrier Transicold dealers** as charcoal **C** pins, including **ComfortPro APU** dealers. Popups say whether the dealer does APUs, reefer service, mobile service and 24/7, plus hours and dealer level.
 - A box at the top right of the map turns each brand on or off.
 - **Fix this listing** link on every result, so anyone can correct the data on OpenStreetMap.
 - Works on phones, with light and dark themes.
@@ -40,6 +42,8 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 <img src="screenshots/brand-popups.png" alt="Popups for a TA with eShop 2.0, a TA with the original eShop, a Freightliner dealer and a Volvo dealer" width="820">
 
 <img src="screenshots/trailer-popups.png" alt="Popups for a Boss Truck Shop, a Utility Trailer dealer, a Prestige dealer and a Timpte support center" width="820">
+
+<img src="screenshots/reefer-popups.png" alt="Popups for a Thermo King Blue Track dealer, a Carrier Transicold dealer and a Carrier mobile dealer" width="820">
 
 <img src="screenshots/brand-pins.png" alt="Brand pins with the brand on/off box" width="520">
 
@@ -76,10 +80,14 @@ The [Update brand locations](.github/workflows/update-vendors.yml) workflow runs
 | `data/utility.json` | Utility Trailer's dealer directory (utilitytrailer.com/dealers), U.S. dealers only | `scripts/update-utility.mjs` |
 | `data/prestige.json` | Prestige's Find a Dealer feed (prestigetrailers.com/shopping-tools-find-dealer), public U.S. dealers only | `scripts/update-prestige.mjs` |
 | `data/timpte.json` | Timpte's dealer locator (timpteequipmenttrailers.com/find-a-dealer) | `scripts/update-timpte.mjs` |
+| `data/thermoking.json` | Every U.S. dealer page in the thermoking.com/dealers directory | `scripts/update-thermoking.mjs` |
+| `data/carrier.json` | Carrier Transicold's dealer locator feed (locator.ttdealers.carrier.com), U.S. dealers only | `scripts/update-carrier.mjs` |
 
 Freightliner's locator often gives coordinates only to the ZIP code, so ExpressPoint sites take Love's exact coordinates and other addresses are placed with the free U.S. Census geocoder. A few addresses the geocoder can't match keep Freightliner's coordinates and may sit a short distance from the real building.
 
-Prestige's feed URL includes a site key, so the script reads it from Prestige's own page at run time instead of storing it here, and it keeps only business fields (no staff names or emails). Timpte's main site (timpte.com/locations) would also list Super Hopper grain trailer dealers, but its search currently returns nothing, so only the support centers and equipment trailer dealers are shown.
+Prestige's feed URL includes a site key, so the script reads it from Prestige's own page at run time instead of storing it here, and it keeps only business fields (no staff names or emails). Thermo King's directory lists marine-only and bus-only locations too; those are left out, so the map shows the dealers that work on trucks and trailers. Some Carrier dealers are mobile-only with no shop address, and their pin marks the area they cover rather than a building. Carrier's feed URL carries an app key, which the script reads from the locator's own script at run time instead of storing it here.
+
+Timpte's main site (timpte.com/locations) would also list Super Hopper grain trailer dealers, but its search currently returns nothing, so only the support centers and equipment trailer dealers are shown.
 
 ## Limits to know about
 
