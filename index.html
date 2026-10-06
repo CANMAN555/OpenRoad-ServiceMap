@@ -960,8 +960,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   const layer = L.layerGroup().addTo(map);
   // ---------- Brand locations: Love's, TA, Freightliner, Volvo, Boss, Utility, Prestige, Timpte, Thermo King, Carrier, FleetPride, Southern Tire Mart ----------
   // Each brand's data/<key>.json is refreshed weekly from that company's own locator by a GitHub Action.
-  const brandIcon = (b) =>
-    L.divIcon({ className: "", html: `<div class="pin brand${b.letter.length > 1 ? " two" : ""}" style="--b:var(${b.color});--bt:${b.text}"><span>${b.letter}</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
+  const brandIcon = (b, letter = b.letter) =>
+    L.divIcon({ className: "", html: `<div class="pin brand${letter.length > 1 ? " two" : ""}" style="--b:var(${b.color});--bt:${b.text}"><span>${letter}</span></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
   const brandGroup = (b) =>
     L.markerClusterGroup
       ? L.markerClusterGroup({
@@ -1297,7 +1297,9 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     </div>`;
   }
   const BRANDS = [
-    { key: "loves", label: "Love's", letter: "L", color: "--loves", text: "#0B1F33", popup: lovesPopup, z: 300 },
+    { key: "loves", label: "Love's", letter: "L", color: "--loves", text: "#0B1F33", popup: lovesPopup, z: 300,
+      // Love's Speedco shops (type "Truck Service", named "SC ...") keep the yellow pin but read SC.
+      pinLetter: (s) => (s.type === "Truck Service" ? "SC" : "L") },
     { key: "ta", label: "TA / Petro", letter: "TA", color: "--ta", text: "#fff", popup: taPopup, z: 200 },
     { key: "freightliner", label: "Freightliner", letter: "FL", color: "--ftl", text: "#0B1F33", popup: freightlinerPopup, z: 100 },
     { key: "volvo", label: "Volvo Trucks", letter: "V", color: "--volvo", text: "#fff", popup: volvoPopup, z: 0 },
@@ -1323,7 +1325,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   const stores = [], storeById = new Map(), groups = {};
   const brandsReady = Promise.allSettled(BRANDS.map((b) => {
     const row = document.getElementById("lt-" + b.key);
-    const group = (groups[b.key] = brandGroup(b)), icon = brandIcon(b);
+    const group = (groups[b.key] = brandGroup(b)), icons = {};
+    const iconFor = (s) => { const l = b.pinLetter ? b.pinLetter(s) : b.letter; return (icons[l] ||= brandIcon(b, l)); };
     return fetch(`data/${b.key}.json`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
       .then((d) => {
@@ -1331,7 +1334,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         d.stores.forEach((s) => {
           // Brands listed first sit on top where two share a spot (e.g. Freightliner ExpressPoint inside a Love's).
           // The popup opens only when the pin is clicked or tapped.
-          const m = L.marker([s.lat, s.lon], { icon, riseOnHover: true, zIndexOffset: b.z });
+          const m = L.marker([s.lat, s.lon], { icon: iconFor(s), riseOnHover: true, zIndexOffset: b.z });
           m.bindPopup(() => b.popup(s, checked), { maxWidth: 290 });
           const id = b.key + ":" + s.id;
           m.on("click", () => highlight(id, true));

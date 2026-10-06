@@ -21,7 +21,7 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 - **Tap-to-call** numbers, an "open 24 hours" filter, and a "has phone number" filter.
 - **Copy info** button that copies name, phone, address, route mile and coordinates for dispatch.
 - **Satellite view** using Esri World Imagery, with road and town labels.
-- **Every Love's location in the US** (Travel Stops, Country Stores and Truck Care/Speedco shops) as yellow pins. Click or tap a pin for the address, phone number, highway exit, hours and a link to the location page on loves.com. Each popup says plainly whether the location sells truck diesel, has a truck repair shop and offers tire service.
+- **Every Love's location in the US** (Travel Stops, Country Stores and Truck Care/Speedco shops) as yellow pins: **L** for Love's stores and **SC** for Love's standalone Speedco shops. Click or tap a pin for the address, phone number, highway exit, hours and a link to the location page on loves.com. Each popup says plainly whether the location sells truck diesel, has a truck repair shop and offers tire service.
 - **TA, Petro and TA Express travel centers** as red TA pins. Popups show truck diesel, whether there is a TA Truck Service shop (bays, services, in-bay hours), tire service, and whether the shop uses TA's **eShop 2.0** portal or the original eShop.
 - **Freightliner dealers and service points**, including Freightliner ExpressPoint at Love's and Speedco, as white FL pins. Popups show repair, tire, road service and towing, Elite Support, and service and parts hours.
 - **Volvo Trucks dealers and service locations** as teal V pins. Popups show repair, Volvo Certified Uptime Center, road service, towing, tires, and service, parts and on-call hours.
