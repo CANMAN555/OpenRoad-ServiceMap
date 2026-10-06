@@ -787,6 +787,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .status:empty { display: none; }
 .status { font-size: .88rem; color: var(--muted); min-height: 1.2em; }
 .status.err { color: var(--err); font-weight: 600; }
+.fuel-only { margin: 6px 0; padding: 6px 8px; border-radius: 6px; background: #c62828; color: #fff; font-weight: 800; text-align: center; }
 
 .summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--font-mono); font-size: .82rem; color: var(--muted); }
 .summary b { color: var(--fg); font-weight: 600; }
@@ -992,6 +993,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   const phoneRow = (label, p) => (p ? `<div class="row">${label ? `<b>${esc(label)}:</b> ` : ""}<a class="ph" href="${telHref(p)}">${esc(p)}</a></div>` : "");
   const addrRow = (s) => `<div class="row">${esc(s.address)}<br>${esc(s.city)}, ${esc(s.state)} ${esc(s.zip || "")}</div>`;
   const linkRow = (url, text) => (url ? `<div class="row"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a></div>` : "");
+  // Red notice for a Love's or TA that sells fuel but has no truck repair shop and no tire service.
+  const fuelOnly = (yes) => (yes ? `<div class="fuel-only" role="note">This is a fuel stop only!</div>` : "");
   const srcRow = (who, checked) => `<div class="src">From ${esc(who)}, checked ${esc(checked)}. Call to confirm.</div>`;
 
   function taPopup(s, checked) {
@@ -1005,6 +1008,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     return `<div class="lv">
       <h4>${esc(s.name)}</h4>
       <div class="t">Store #${esc(s.id)}${s.highway ? " · " + esc(s.highway) : ""}</div>
+      ${fuelOnly((s.fuel || []).length > 0 && !shop.onSite && !shop.phone && !tires.length)}
       <div class="caps">
         ${cap(diesel.length > 0, "Truck diesel", diesel.length ? diesel.concat((s.fuel || []).filter((f) => /^DEF$/i.test(f))).join(", ") : (s.fuel || []).length ? "Car fuel only" : "No fuel listed")}
         ${cap(shop.onSite, "TA Truck Service shop", shop.onSite ? [shop.bays && `${shop.bays} bays`, (shop.services || []).filter((n) => !/tire/i.test(n)).join(", ")].filter(Boolean).join(" · ") : shop.phone ? "ta-petro.com lists a Truck Service phone here but no shop details" : "None listed", "Yes", shop.phone ? "Call to check" : "No")}
@@ -1280,6 +1284,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     return `<div class="lv">
       <h4>${esc(title)}</h4>
       <div class="t">Store #${esc(s.id)}${where ? " · " + esc(where) : ""}</div>
+      ${fuelOnly(fuels.length > 0 && !shop.onSite && !tires && !s.tireCare)}
       <div class="caps">
         ${cap(truckDiesel, "Truck diesel", truckDiesel ? fuels.filter((f) => /diesel|DEF/i.test(f) && f !== "Auto Diesel").join(", ") : s.fuel.length ? "Car fuel only" : "No fuel sold here")}
         ${cap(shop.onSite, "Truck repair shop", shop.onSite ? (shop.services || []).filter((n) => !/tire/i.test(n)).join(", ") : "None listed")}
