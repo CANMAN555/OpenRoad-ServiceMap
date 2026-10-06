@@ -1339,11 +1339,11 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
           const st = { id, b, s, m, lat: s.lat, lon: s.lon, name: s.name };
           stores.push(st); storeById.set(id, st);
         });
-        group.addTo(map);
+        if ($("cat-" + b.key)?.checked !== false) group.addTo(map); else row.querySelector("input").checked = false;
         row.querySelector(".nm").textContent = `${b.label} (${d.count})`;
         const box = row.querySelector("input");
         box.disabled = false;
-        box.addEventListener("change", (e) => (e.target.checked ? group.addTo(map) : map.removeLayer(group)));
+        box.addEventListener("change", (e) => showBrand(b.key, e.target.checked));
       })
       .catch((e) => {
         console.warn(`${b.label} locations unavailable:`, e.message);
@@ -1356,7 +1356,16 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   // ---------- company chips: which companies the results list shows ----------
   $("cats").insertAdjacentHTML("beforeend", BRANDS.map((b) =>
     `<label class="chip"><input type="checkbox" id="cat-${b.key}" value="${b.key}" checked><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span>${b.label}</label>`).join(""));
-  $("cats").addEventListener("change", render);
+  // A company's checkbox (under the search box or in the map's top-right box) shows or hides its
+  // pins on the map right away, with or without a search, and keeps the two boxes in step.
+  function showBrand(key, on) {
+    const group = groups[key], chip = $("cat-" + key), box = document.querySelector(`#lt-${key} input`);
+    if (chip) chip.checked = on;
+    if (box) box.checked = on;
+    if (group) on ? group.addTo(map) : map.removeLayer(group);
+    render();
+  }
+  $("cats").addEventListener("change", (e) => { if (e.target.id.startsWith("cat-")) showBrand(e.target.value, e.target.checked); });
   $("phone-only").addEventListener("change", render);
   $("h24-only").addEventListener("change", render);
 
@@ -1626,6 +1635,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   }
   ["from", "to", "spot"].forEach((id) => attachSuggest($(id)));
   async function geocode(q) {
+    if (!String(q || "").trim()) throw new Error("Type a place first: an address, a town, or coordinates like 41.2375, -95.8780.");
     const c = parseCoords(q);
     if (c) return { lat: c.lat, lon: c.lon, label: c.lat.toFixed(5) + ", " + c.lon.toFixed(5), local: true };
     await loadPlaces();
@@ -1832,8 +1842,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     const v = storeById.get(li.dataset.id); if (!v) return;
     highlight(v.id);
     // Turn the company's layer back on if it was switched off, then open the pin's popup.
-    const group = groups[v.b.key], box = document.querySelector(`#lt-${v.b.key} input`);
-    if (!map.hasLayer(group)) { group.addTo(map); if (box) box.checked = true; }
+    const group = groups[v.b.key];
+    if (!map.hasLayer(group)) showBrand(v.b.key, true);
     map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12), { animate: false });
     if (group.zoomToShowLayer) group.zoomToShowLayer(v.m, () => v.m.openPopup()); else v.m.openPopup();
   });
