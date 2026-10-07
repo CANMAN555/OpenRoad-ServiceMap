@@ -107,6 +107,12 @@ Prestige's feed URL includes a site key, so the script reads it from Prestige's 
 
 Timpte's main site (timpte.com/locations) would also list Super Hopper grain trailer dealers, but its search currently returns nothing, so only the support centers and equipment trailer dealers are shown.
 
+## Pin accuracy check
+
+The [Check pin locations](.github/workflows/check-pins.yml) workflow runs every Monday after the company updates. `scripts/check-pins.mjs` matches each location's street address with the U.S. Census geocoder. When a pin is more than half a mile from the Census point, it asks OpenStreetMap for a mapped address point or building at that address. A pin is moved only when the Census and OpenStreetMap agree with each other and not with the company. Census estimates alone are not trusted: in the first check the Census put the Love's in Albuquerque 15.7 miles from where Love's and OpenStreetMap both have it.
+
+Moves are saved in `data/pin-fixes.json` and applied by every weekly update while the company still lists the same address. The first check (2026-10-07) compared 2,818 street addresses: most pins were within 0.1 mile, 35 far-off pins were confirmed correct, 20 were moved (11 Southern Tire Mart, 7 Volvo, 1 FleetPride, 1 Utility), and 192 could not be confirmed either way and keep the company's coordinates.
+
 ## Limits to know about
 
 - **Locations can be out of date.** Each company's list is refreshed weekly, so a store that opened or closed this week shows up after the next Monday update. Always call ahead to confirm hours, heavy-truck capability and payment.
