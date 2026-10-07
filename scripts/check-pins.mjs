@@ -41,7 +41,11 @@ async function nominatim(r) {
       const res = await fetch("https://nominatim.openstreetmap.org/search?" + q, { headers: { "User-Agent": UA } });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const [hit] = await res.json();
-      return hit && hit.address?.house_number ? [Number(hit.lat), Number(hit.lon)] : null;
+      // In the U.S., Nominatim fills gaps with house numbers estimated from the Census's own TIGER
+      // street ranges (and OpenStreetMap interpolation lines). Those come back as a "place/house" on a
+      // way and would just repeat the Census, so only a mapped address point or building counts.
+      const estimated = hit && hit.category === "place" && hit.type === "house" && hit.osm_type !== "node";
+      return hit && hit.address?.house_number && !estimated ? [Number(hit.lat), Number(hit.lon)] : null;
     } catch (e) { console.warn("Nominatim:", e.message); await sleep(5000 * (attempt + 1)); }
   }
   return null;
