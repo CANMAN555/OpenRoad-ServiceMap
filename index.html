@@ -8,9 +8,26 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <meta name="theme-color" content="#0B1F33">
+<link rel="preconnect" href="https://server.arcgisonline.com">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap">
+<!-- The fonts load without holding up the first paint; the page shows in system fonts until they arrive. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap"></noscript>
+<!-- Start downloading the company location files right away, alongside the map scripts. -->
+<link rel="preload" as="fetch" href="data/loves.json" crossorigin>
+<link rel="preload" as="fetch" href="data/ta.json" crossorigin>
+<link rel="preload" as="fetch" href="data/freightliner.json" crossorigin>
+<link rel="preload" as="fetch" href="data/volvo.json" crossorigin>
+<link rel="preload" as="fetch" href="data/boss.json" crossorigin>
+<link rel="preload" as="fetch" href="data/utility.json" crossorigin>
+<link rel="preload" as="fetch" href="data/prestige.json" crossorigin>
+<link rel="preload" as="fetch" href="data/timpte.json" crossorigin>
+<link rel="preload" as="fetch" href="data/thermoking.json" crossorigin>
+<link rel="preload" as="fetch" href="data/carrier.json" crossorigin>
+<link rel="preload" as="fetch" href="data/fleetpride.json" crossorigin>
+<link rel="preload" as="fetch" href="data/stm.json" crossorigin>
 <style>
 /* required styles */
  
@@ -871,7 +888,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       <a class="logo" href="./" aria-label="OpenRoad Service Map home">
         <picture>
           <source srcset="assets/logo.webp" type="image/webp">
-          <img src="assets/logo.png" alt="OpenRoad Service Map" width="640" height="360">
+          <img src="assets/logo.png" alt="OpenRoad Service Map" width="264" height="149">
         </picture>
       </a>
       <div>
@@ -967,6 +984,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     L.markerClusterGroup
       ? L.markerClusterGroup({
           disableClusteringAtZoom: 9, maxClusterRadius: 45, showCoverageOnHover: false, spiderfyOnMaxZoom: false,
+          chunkedLoading: true, // cluster in short slices so the page stays responsive while pins load
           iconCreateFunction: (c) => L.divIcon({ className: "", html: `<div class="brand-cluster" style="--b:var(${b.color});--bt:${b.text}">${c.getChildCount()}</div>`, iconSize: [34, 34] }),
         })
       : L.layerGroup();
@@ -1336,17 +1354,17 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
       .then((d) => {
         const checked = new Date(d.fetched_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-        d.stores.forEach((s) => {
+        const pins = d.stores.map((s) => {
           // Brands listed first sit on top where two share a spot (e.g. Freightliner ExpressPoint inside a Love's).
-          // The popup opens only when the pin is clicked or tapped.
           const m = L.marker([s.lat, s.lon], { icon: iconFor(s), riseOnHover: true, zIndexOffset: b.z });
-          m.bindPopup(() => b.popup(s, checked), { maxWidth: 290 });
-          const id = b.key + ":" + s.id;
-          m.on("click", () => highlight(id, true));
-          group.addLayer(m);
-          const st = { id, b, s, m, lat: s.lat, lon: s.lon, name: s.name };
-          stores.push(st); storeById.set(id, st);
+          const st = { id: b.key + ":" + s.id, b, s, m, checked, lat: s.lat, lon: s.lon, name: s.name };
+          m.st = st;
+          stores.push(st); storeById.set(st.id, st);
+          return m;
         });
+        // One click handler per company instead of one per pin. The popup opens only on a click or tap.
+        group.on("click", (e) => { const st = e.layer.st; if (st) { openStore(st, false); highlight(st.id, true); } });
+        group.addLayers(pins);
         if ($("cat-" + b.key)?.checked !== false) group.addTo(map); else row.querySelector("input").checked = false;
         row.querySelector(".nm").textContent = `${b.label} (${d.count})`;
         const box = row.querySelector("input");
@@ -1360,6 +1378,13 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
         row.querySelector(".nm").textContent = `${b.label} (not available)`;
       });
   }));
+
+  // A pin's popup is built the first time it's opened, so loading thousands of pins stays quick.
+  // After that, Leaflet's own click handler on the pin opens it.
+  function openStore(st, always = true) {
+    if (!st.m.getPopup()) { st.m.bindPopup(() => st.b.popup(st.s, st.checked), { maxWidth: 290 }); st.m.openPopup(); }
+    else if (always) st.m.openPopup();
+  }
 
   // ---------- company chips: which companies the results list shows ----------
   $("cats").insertAdjacentHTML("beforeend", BRANDS.map((b) =>
@@ -1853,7 +1878,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     const group = groups[v.b.key];
     if (!map.hasLayer(group)) showBrand(v.b.key, true);
     map.setView([v.lat, v.lon], Math.max(map.getZoom(), 12), { animate: false });
-    if (group.zoomToShowLayer) group.zoomToShowLayer(v.m, () => v.m.openPopup()); else v.m.openPopup();
+    if (group.zoomToShowLayer) group.zoomToShowLayer(v.m, () => openStore(v)); else openStore(v);
   });
 
 })();
