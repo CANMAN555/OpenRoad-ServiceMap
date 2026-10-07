@@ -101,7 +101,10 @@ export async function censusGeocode(list) {
       try {
         const r = await fetch("https://geocoding.geo.census.gov/geocoder/locations/addressbatch", { method: "POST", body: form, headers: { "User-Agent": UA } });
         if (!r.ok) throw new Error("HTTP " + r.status);
-        for (const line of (await r.text()).split("\n")) {
+        const text = await r.text();
+        // The geocoder sometimes answers 200 with an error page instead of results; retry those.
+        if (!/"Match"|"No_Match"|"Tie"/.test(text)) throw new Error("unexpected answer: " + text.slice(0, 120).replace(/\s+/g, " "));
+        for (const line of text.split("\n")) {
           const cols = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
           if (cols[2] !== "Match" || !cols[5]) continue;
           const [lon, lat] = cols[5].split(",").map(Number);
