@@ -1,0 +1,122 @@
+{
+ "fleetpride:773": {
+  "address": "634 E Baseline Rd, Suite 112",
+  "lat": 33.379214,
+  "lon": -111.818349,
+  "why": "Company pin was 1.1 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:311": {
+  "address": "307 Ambassador Caffery Pkwy",
+  "lat": 30.241122,
+  "lon": -92.06572,
+  "why": "Company pin was 3.0 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:333": {
+  "address": "2009 E Beebe-Capps Expy",
+  "lat": 35.239971,
+  "lon": -91.713557,
+  "why": "Company pin was 1.3 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:339": {
+  "address": "1802 Hampton Road",
+  "lat": 33.468206,
+  "lon": -94.062919,
+  "why": "Company pin was 1.9 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:410": {
+  "address": "1833 Mony St.",
+  "lat": 32.769043,
+  "lon": -97.321345,
+  "why": "Company pin was 1.3 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:620": {
+  "address": "2000 West Kaibab Ln.",
+  "lat": 35.189383,
+  "lon": -111.678084,
+  "why": "Company pin was 1.6 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:707": {
+  "address": "13748 Valley Blvd",
+  "lat": 34.044647,
+  "lon": -117.989288,
+  "why": "Company pin was 2.4 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:709": {
+  "address": "18203 Mount Baldy Circle",
+  "lat": 33.699025,
+  "lon": -117.937206,
+  "why": "Company pin was 0.9 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:759": {
+  "address": "333 Glendale Ave",
+  "lat": 39.527178,
+  "lon": -119.747378,
+  "why": "Company pin was 1.2 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:763": {
+  "address": "140 Hegenberger Loop",
+  "lat": 37.735375,
+  "lon": -122.195289,
+  "why": "Company pin was 2.8 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:STMPFJ-219": {
+  "address": "711 Oakland Circle",
+  "lat": 37.931515,
+  "lon": -79.233134,
+  "why": "Company pin was 2.5 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "stm:STMPFJ-489": {
+  "address": "312 Brown Street",
+  "lat": 40.481176,
+  "lon": -89.016352,
+  "why": "Company pin was 1.7 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "utility:north-central-utility-of-wisconsin-llc-1": {
+  "address": "1100 Silvernail Road",
+  "lat": 43.044839,
+  "lon": -88.243885,
+  "why": "Company pin was 1.5 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "volvo:4333D": {
+  "address": "8555 Pedrick Rd",
+  "lat": 38.485531,
+  "lon": -121.804686,
+  "why": "Company pin was 0.6 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "volvo:4350D": {
+  "address": "320 N 1st St, Ste 19, 20, & 21",
+  "lat": 40.996715,
+  "lon": -75.191258,
+  "why": "Company pin was 3.7 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "volvo:4400D": {
+  "address": "2245 Odlin Rd",
+  "lat": 44.776914,
+  "lon": -68.861663,
+  "why": "Company pin was 0.8 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "volvo:4422D": {
+  "address": "299 Warren Ave",
+  "lat": 43.68783,
+  "lon": -70.309765,
+  "why": "Company pin was 1.2 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "volvo:5068D": {
+  "address": "8101 Daytona Rd Nw",
+  "lat": 35.088799,
+  "lon": -106.735479,
+  "why": "Company pin was 2.6 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "volvo:5255D": {
+  "address": "10915 W Rogers St",
+  "lat": 43.008,
+  "lon": -88.048343,
+  "why": "Company pin was 1.0 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ },
+ "volvo:5475D": {
+  "address": "22048 Salmon Run Mall Rd",
+  "lat": 43.98685,
+  "lon": -75.948323,
+  "why": "Company pin was 1.9 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
+ }
+}
