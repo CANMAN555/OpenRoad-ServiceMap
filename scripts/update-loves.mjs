@@ -3,6 +3,7 @@
 // Falls back to the latest All The Places run (CC0, scraped weekly from loves.com) if Love's
 // blocks the request.
 import { mkdir, writeFile } from "node:fs/promises";
+import { applyPinFixes } from "./lib.mjs";
 
 const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0; +https://github.com/CANMAN555/OpenRoad-ServiceMap)";
 const PAGE_SIZE = 100;
@@ -177,6 +178,7 @@ if (stores.length < 300) throw new Error(`Only ${stores.length} locations found;
 const counts = stores.reduce((m, s) => ((m[s.type] = (m[s.type] || 0) + 1), m), {});
 console.log(`Writing ${stores.length} locations`, counts);
 await mkdir("data", { recursive: true });
+await applyPinFixes("loves", stores);
 await writeFile(
   "data/loves.json",
   JSON.stringify({ source, fetched_at: new Date().toISOString(), count: stores.length, counts, stores }, null, 0) + "\n",

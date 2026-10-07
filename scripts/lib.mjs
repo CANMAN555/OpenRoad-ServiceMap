@@ -1,5 +1,5 @@
 // Small helpers shared by the vendor update scripts.
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 export const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0; +https://github.com/CANMAN555/OpenRoad-ServiceMap)";
 
@@ -45,8 +45,25 @@ export const span = (a, b) => {
   return `${s} – ${e}`;
 };
 
+// Pin corrections found by scripts/check-pins.mjs: { "brand:id": { address, lat, lon, why } }.
+// A correction is used only while the company still lists the same street address, so a store that
+// moves gets the company's new coordinates instead of an old fix.
+const sameAddress = (a, b) => String(a || "").toLowerCase().replace(/[^a-z0-9]/g, "") === String(b || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+export async function applyPinFixes(name, stores) {
+  let fixes = {};
+  try { fixes = JSON.parse(await readFile("data/pin-fixes.json", "utf8")); } catch { return 0; }
+  let n = 0;
+  for (const s of stores) {
+    const f = fixes[`${name}:${s.id}`];
+    if (f && sameAddress(f.address, s.address)) { s.lat = f.lat; s.lon = f.lon; s.geo = "checked"; n++; }
+  }
+  if (n) console.log(`Applied ${n} checked pin locations to ${name}`);
+  return n;
+}
+
 export async function writeData(name, payload, min) {
   if (payload.stores.length < min) throw new Error(`Only ${payload.stores.length} ${name} locations (expected at least ${min}); not writing.`);
+  await applyPinFixes(name, payload.stores);
   await mkdir("data", { recursive: true });
   await writeFile(`data/${name}.json`, JSON.stringify(payload) + "\n");
   console.log(`Wrote data/${name}.json with ${payload.stores.length} locations`);
