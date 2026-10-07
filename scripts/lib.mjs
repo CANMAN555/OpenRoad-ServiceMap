@@ -3,7 +3,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 export const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0; +https://github.com/CANMAN555/OpenRoad-ServiceMap)";
 
-export const clean = (s) => (s == null ? null : String(s).replace(/\s+/g, " ").trim() || null);
+// Turns HTML character references some feeds leave in their text ("O&#x27;Donnell", "&nbsp;") into characters.
+const NAMED = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
+const decode = (s) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
+  e[0] === "#" ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : +e.slice(1)) : NAMED[e.toLowerCase()] ?? m);
+export const clean = (s) => (s == null ? null : decode(String(s)).replace(/\s+/g, " ").trim() || null);
+// "917523253" -> "91752-3253"; five-digit ZIPs and ZIP+4 with a dash pass through.
+export const formatZip = (z) => { const c = clean(z); return c && /^\d{9}$/.test(c) ? `${c.slice(0, 5)}-${c.slice(5)}` : c; };
 
 export function formatPhone(p) {
   const d = String(p || "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");

@@ -1,7 +1,7 @@
 // Downloads every U.S. Volvo Trucks dealer and service location from Volvo's dealer locator feed
 // (the one behind volvotrucks.us/find-a-dealer) and writes data/volvo.json.
 // Run by .github/workflows/update-vendors.yml.
-import { clean, fetchText, formatPhone, span, writeData } from "./lib.mjs";
+import { clean, fetchText, formatPhone, formatZip, span, writeData } from "./lib.mjs";
 
 const FEED = "https://dealerlocator.volvotrucks.us/Volvo_DealerJson.ashx";
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // feed numbers days from Sunday = 0
@@ -43,7 +43,7 @@ for (const st of Object.values(us.states || {})) {
       address: titleCase([d.MAIN_ADDRESS_LINE_1_TXT, d.MAIN_ADDRESS_LINE_2_TXT].filter(Boolean).join(", ")),
       city: titleCase(d.MAIN_CITY_NM),
       state: clean(d.MAIN_STATE_PROV_CD),
-      zip: clean(d.MAIN_POSTAL_CD),
+      zip: formatZip(d.MAIN_POSTAL_CD),
       phone: formatPhone(d.REG_PHONE_NUMBER),
       servicePhone: formatPhone(d.SVC_PHONE_NUMBER),
       tollFree: formatPhone(d.TF_PHONE_NUMBER),
