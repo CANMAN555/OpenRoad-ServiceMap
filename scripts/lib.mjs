@@ -82,7 +82,8 @@ export async function censusGeocode(list) {
           const cols = [...line.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
           if (cols[2] !== "Match" || !cols[5]) continue;
           const [lon, lat] = cols[5].split(",").map(Number);
-          if (Number.isFinite(lat) && Number.isFinite(lon)) out.set(cols[0], [lat, lon]);
+          // The array is [lat, lon] for existing callers; .exact and .matched say how sure the Census is.
+          if (Number.isFinite(lat) && Number.isFinite(lon)) out.set(cols[0], Object.assign([lat, lon], { exact: cols[3] === "Exact", matched: cols[4] }));
         }
         break;
       } catch (e) {

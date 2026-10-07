@@ -1,0 +1,28 @@
+name: Check pin locations
+
+# Compares every company pin with the U.S. Census geocoder's point for the same street address and
+# prints the pins that are far off. Read-only: it never changes the data. Run it from the Actions tab.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/check-pins.mjs
+      - .github/workflows/check-pins.yml
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-pins.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pin-check
+          path: pin-check.json
+          retention-days: 14
