@@ -752,13 +752,21 @@
   color-scheme: dark;
 }
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; margin: 0; display: flex; flex-direction: column; }
+
+/* Workspace switcher across the top: Map is the site today; Post Board is coming and switched off. */
+.topnav { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--navy); }
+.topnav button { font: 700 .9rem var(--font-body); padding: 7px 16px; border-radius: var(--radius); border: 1px solid #2c4763; background: transparent; color: #F4F6F8; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.topnav button[aria-pressed="true"] { background: var(--orange); border-color: var(--orange); color: var(--navy); }
+.topnav button:disabled { opacity: .45; cursor: not-allowed; }
+.topnav .soon { font: 600 .68rem var(--font-body); text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; background: #2c4763; }
+.topnav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 a { color: var(--accent); }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-.app { display: grid; grid-template-columns: minmax(340px, 430px) 1fr; height: 100%; }
+.app { display: grid; grid-template-columns: minmax(340px, 430px) 1fr; flex: 1; min-height: 0; }
 .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
 .mapwrap { position: relative; min-width: 0; min-height: 0; }
 #map { position: absolute; inset: 0; background: var(--bg); }
@@ -882,6 +890,11 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
 </head>
 <body>
+<nav class="topnav" aria-label="Workspace">
+  <button type="button" id="ws-map" aria-pressed="true">Map</button>
+  <!-- Post Board (fleet repair updates) is still being built, so it can't be opened on the live site yet. -->
+  <button type="button" id="ws-board" aria-pressed="false" disabled title="Post Board is coming soon">Post Board <span class="soon">Coming soon</span></button>
+</nav>
 <div class="app">
   <aside class="panel">
     <header class="sign">
