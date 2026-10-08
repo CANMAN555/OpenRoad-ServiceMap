@@ -14,6 +14,7 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 
 ## Features
 
+- **Map and Post Board buttons** across the top. Map is this search tool. Post Board, a fleet repair board for trucks and trailers, is still being built and is grayed out on the live site until it is ready.
 - **Along a route:** search 3 to 25 miles each side of a route between two places.
 - **Near the truck:** search around an address, town, coordinates, or the phone's location.
 - **City suggestions as you type** in From, To and Truck location, and they still match with typos ("omaha nebraksa" finds Omaha, NE). Picking one skips the online lookup.
