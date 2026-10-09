@@ -914,6 +914,12 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
     -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
   .leaflet-control-layers-expanded, .leaflet-popup-content-wrapper { border: 1px solid var(--glass-line); border-radius: 12px; }
 }
+/* Post Board workspace: hide the map's sidebar and controls; the board (postboard/postboard.css) sits over the map. */
+body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control-container { display: none; }
+@media (max-width: 760px) {
+  body.ws-board .app { display: block; position: relative; height: auto; }
+  body.ws-board .mapwrap { position: absolute; inset: 0; border: 0; }
+}
 @media (max-width: 760px) {
   .app { grid-template-columns: 1fr; grid-template-rows: auto 42vh auto; height: auto; }
   .panel { display: contents; }
@@ -927,6 +933,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
+<link rel="stylesheet" href="postboard/postboard.css">
 
 </head>
 <body>
@@ -939,8 +946,8 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   </a>
   <div class="ws">
     <button type="button" id="ws-map" aria-pressed="true">Map</button>
-    <!-- Post Board (fleet repair updates) is still being built, so it can't be opened on the live site yet. -->
-    <button type="button" id="ws-board" aria-pressed="false" disabled title="Post Board is coming soon">Post Board <span class="soon">Coming soon</span></button>
+    <!-- Post Board: fleet repair postings over the same map, behind a 4-digit PIN. -->
+    <button type="button" id="ws-board" aria-pressed="false">Post Board</button>
   </div>
 </nav>
 <div class="app">
@@ -1003,6 +1010,114 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   </aside>
   <main class="mapwrap"><div id="map" aria-label="Map of route and vendors"></div></main>
     <button type="button" class="side-toggle" id="side-toggle" aria-controls="side-panel" aria-expanded="true" aria-label="Hide sidebar" title="Hide sidebar"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+
+  <!-- Post Board workspace: fleet repair postings over the same map. Opens after the 4-digit PIN. -->
+  <div id="pb" hidden>
+    <div class="pb-gate" id="pb-gate">
+      <form class="pb-gate-card" id="pb-gate-form" autocomplete="off">
+        <h2>Post Board</h2>
+        <p>Fleet repair postings for the team. Enter the 4-digit PIN to open it.</p>
+        <label class="f">Your name
+          <input type="text" id="pb-name" maxlength="40" placeholder="Shows on the updates you post">
+        </label>
+        <label class="f">PIN
+          <input type="password" id="pb-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" autocomplete="off">
+        </label>
+        <button class="btn orange" type="submit" id="pb-go">Open Post Board</button>
+        <p class="pb-gate-msg" id="pb-gate-msg" role="alert"></p>
+      </form>
+    </div>
+    <div id="pb-board" hidden>
+    <div class="strip" aria-live="polite">
+      <div class="pb-status"><span class="conn" id="conn"><span class="dot"></span><span id="conn-text">Connecting</span></span><button type="button" class="btn ghost" id="pb-lock">Lock</button></div>
+      <div class="lbl ticker-title">Latest updates</div>
+      <div class="ticker" id="ticker">
+        <div class="tick-empty" id="latest-msg">No repair updates yet. Every new posting and change shows up here for everyone.</div>
+      </div>
+    </div>
+
+    <div class="notice" id="notice" hidden></div>
+
+    <main class="wrap">
+      <section aria-labelledby="fleet-h" class="fleet" id="fleet">
+        <button type="button" class="fleet-toggle" id="fleet-toggle" aria-controls="fleet-body" aria-expanded="true" title="Hide Fleet and widen Repair posts"><span aria-hidden="true">‹</span><span class="sr">Hide Fleet</span></button>
+        <span class="fleet-tab" aria-hidden="true">Fleet</span>
+        <div class="fleet-body" id="fleet-body">
+        <div class="sec-head" style="justify-content:flex-start">
+          <button type="button" class="btn orange" id="unit-open" aria-expanded="false" aria-controls="add-unit">Add unit</button>
+          <h2 id="fleet-h">Fleet <small id="fleet-count">0 trucks · 0 trailers</small></h2>
+        </div>
+        <form class="row" id="add-unit" hidden>
+          <label class="f" style="flex:0 0 110px">Type
+            <select id="unit-kind"><option value="truck">Truck</option><option value="trailer">Trailer</option></select>
+          </label>
+          <label class="f" style="flex:1 1 120px">Unit #
+            <input type="text" id="unit-num" placeholder="e.g. 1042" autocomplete="off" required maxlength="20">
+          </label>
+          <button class="btn" type="submit">Add</button>
+        </form>
+        <h3>Trucks</h3>
+        <ul class="units" id="trucks"><li class="empty">Click Add unit to add your first truck. Its trailer, open repairs and complaint history show here.</li></ul>
+        <h3>Trailers</h3>
+        <ul class="units" id="trailers"><li class="empty">Click Add unit to add trailers, then hook one to a truck.</li></ul>
+        </div>
+      </section>
+
+      <section aria-labelledby="posts-h">
+        <div class="sec-head">
+          <h2 id="posts-h">Repair posts <small id="posts-count"></small></h2>
+          <button type="button" class="btn orange" id="np-open" aria-expanded="false" aria-controls="new-post">Create posting</button>
+        </div>
+        <div class="counts" id="counts" role="group" aria-label="Filter repair posts by status"></div>
+        <form class="newpost" id="new-post" hidden>
+          <label class="f" for="np-truck-btn">Truck unit #
+            <select id="np-truck" hidden aria-hidden="true" tabindex="-1"><option value="">Choose a truck</option></select>
+            <button type="button" class="pick-btn empty" id="np-truck-btn" aria-haspopup="listbox" aria-expanded="false">Choose a truck</button>
+          </label>
+          <div class="f">Trailer on it now
+            <span class="trl" id="np-trailer">None</span>
+            <button type="button" class="btn ghost" id="np-link" style="justify-self:start">Link trailer</button>
+          </div>
+          <div class="wide sd-row">
+          <label class="f">Status
+            <select id="np-status"></select>
+          </label>
+          <label class="f">Sending to
+            <input type="text" id="np-dest" class="dest" placeholder="Type a city, state or shop" maxlength="200" autocomplete="off">
+          </label>
+          </div>
+          <div class="f wide">Complaint is for
+            <div class="seg" role="radiogroup" aria-label="Complaint is for">
+              <label><input type="radio" name="np-for" id="np-for-truck" value="truck" checked><span>Truck</span></label>
+              <label><input type="radio" name="np-for" id="np-for-trailer" value="trailer"><span>Trailer</span></label>
+              <label><input type="radio" name="np-for" id="np-for-both" value="both"><span>Both</span></label>
+            </div>
+          </div>
+          <div class="wide cgroup">
+            <label class="f"><span id="np-c1-label">Truck complaint</span>
+              <textarea id="np-complaint" placeholder="What the driver reported about the truck" maxlength="1000"></textarea>
+            </label>
+            <label class="f"><span id="np-wo1-label">Truck WO #</span>
+              <input type="text" id="np-wo1" placeholder="Work order #" maxlength="40" autocomplete="off">
+            </label>
+          </div>
+          <div class="wide cgroup" id="np-c2-wrap" hidden>
+            <label class="f">Trailer complaint
+              <textarea id="np-complaint2" placeholder="What the driver reported about the trailer" maxlength="1000"></textarea>
+            </label>
+            <label class="f">Trailer WO #
+              <input type="text" id="np-wo2" placeholder="Work order #" maxlength="40" autocomplete="off">
+            </label>
+          </div>
+          <div class="wide" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn orange" type="submit">Post repair update</button><button class="btn ghost" type="button" id="np-cancel">Cancel</button></div>
+        </form>
+        <ul class="posts" id="posts"><li class="empty">No repair posts yet. Click Create posting to add the first one.</li></ul>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" hidden></div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -1037,6 +1152,20 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   }
   sideBtn.addEventListener("click", () => setSide(!app.classList.contains("side-min")));
   try { if (localStorage.getItem("orsm-side-min")) setSide(true); } catch (e) {}
+  // Workspaces: Map and Post Board share this one map. The Post Board button swaps the panels on top; the map stays put.
+  const wsMap = $("ws-map"), wsBoard = $("ws-board"), pb = $("pb");
+  function setWorkspace(board) {
+    document.body.classList.toggle("ws-board", board);
+    wsMap.setAttribute("aria-pressed", String(!board)); wsBoard.setAttribute("aria-pressed", String(board));
+    pb.hidden = !board;
+    map.closePopup();
+    setTimeout(() => map.invalidateSize(), 0);
+    if (board) window.PBGate?.show();
+    history.replaceState(null, "", board ? "#post-board" : location.pathname + location.search);
+  }
+  wsMap.addEventListener("click", () => setWorkspace(false));
+  wsBoard.addEventListener("click", () => setWorkspace(true));
+  if (location.hash === "#post-board") addEventListener("load", () => setWorkspace(true));
   // Basemap: Esri World Imagery satellite with road and place labels on top.
   const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
   L.layerGroup([
@@ -1955,5 +2084,9 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
 })();
 </script>
+<script src="postboard/config.js"></script>
+<script src="postboard/store.js"></script>
+<script src="postboard/postboard.js"></script>
+<script src="postboard/gate.js"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 
 ## Features
 
-- **Map and Post Board buttons** across the top. Map is this search tool. Post Board, a fleet repair board for trucks and trailers, is still being built and is grayed out on the live site until it is ready.
+- **Map and Post Board buttons** across the top, sharing one map underneath. Map is this search tool. Post Board is a fleet repair board for trucks and trailers that opens with a 4-digit PIN (see [Post Board](#post-board)).
 - **Along a route:** search 3 to 25 miles each side of a route between two places.
 - **Near the truck:** search around an address, town, coordinates, or the phone's location.
 - **City suggestions as you type** in From, To and Truck location, and they still match with typos ("omaha nebraksa" finds Omaha, NE). Picking one skips the online lookup.
@@ -52,6 +52,26 @@ When a truck breaks down, a driver or dispatcher has to find a shop that can han
 <img src="screenshots/brand-pins.png" alt="Brand pins with the brand on/off box" width="520">
 
 <img src="screenshots/mobile.png" alt="Phone screenshot" width="280">
+
+## Post Board
+
+A fleet repair board for one team, over the same map. Press **Post Board** at the top, enter your name and the 4-digit PIN, and the map's sidebar is swapped for the board while the map stays where it was.
+
+- **Fleet:** trucks and trailers by unit number. A truck shows the trailer it is pulling; a trailer shows the truck it is connected to.
+- **Repair posts:** a posting per breakdown with what the complaint is for (truck, trailer or both), work order numbers, a status (Needs routing back to Omaha or Heading to a shop), and a "Sending to" box that suggests cities and the shops on the map.
+- **At shop, work in progress** and **Work complete** checkboxes on each posting. Work complete closes the posting and locks it until it is reopened.
+- **Latest updates** board at the top with the five newest changes, newest first.
+
+**Where the board is saved.** With a Supabase project set up, everyone with the PIN sees one shared board, updated every few seconds. Without one, each browser keeps its own board.
+
+To share one board:
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In the project, open **SQL Editor**, paste [`postboard/supabase.sql`](postboard/supabase.sql) and run it.
+3. From **Project Settings > API**, copy the Project URL and the `anon` public key into [`postboard/config.js`](postboard/config.js).
+
+The anon key is public by design. The tables refuse it, and the page can only call the `pb_*` database functions, which check the PIN on every call and pause after 20 wrong PINs in 10 minutes. The PIN starts as 1234; the top of `supabase.sql` shows how to change it.
+
+Code: [`postboard/postboard.js`](postboard/postboard.js) (the board), [`postboard/store.js`](postboard/store.js) (saving), [`postboard/gate.js`](postboard/gate.js) (PIN screen), [`postboard/postboard.css`](postboard/postboard.css).
 
 ## How it works (tech used)
 
