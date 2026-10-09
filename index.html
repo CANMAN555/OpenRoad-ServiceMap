@@ -770,6 +770,13 @@ a { color: var(--accent); }
 .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
 .mapwrap { position: relative; min-width: 0; min-height: 0; }
 #map { position: absolute; inset: 0; background: var(--bg); }
+/* Arrow on the sidebar's right edge folds the sidebar away to the left so the map fills the screen */
+.app.side-min { grid-template-columns: 0 1fr; }
+.app.side-min .panel { visibility: hidden; overflow: hidden; border-right: 0; }
+.side-toggle { position: absolute; z-index: 1000; left: 0; top: 50%; transform: translateY(-50%); width: 26px; height: 56px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-left: 0; border-radius: 0 var(--radius) var(--radius) 0; background: var(--panel); color: var(--fg); cursor: pointer; box-shadow: 2px 2px 8px rgba(0,0,0,.3); }
+.side-toggle:hover { background: var(--orange); color: var(--navy); border-color: var(--orange); }
+.side-toggle svg { transition: transform .2s; }
+.app.side-min .side-toggle svg { transform: rotate(180deg); }
 
 /* Header styled like a green guide sign */
 .sign { background: var(--header-bg); color: var(--fg); padding: 10px 16px 10px; display: flex; align-items: center; gap: 12px; border-bottom: 4px solid var(--orange); }
@@ -884,6 +891,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   .sign { grid-row: 1; }
   .mapwrap { grid-row: 2; border-block: 1px solid var(--line); }
   .scroll { grid-row: 3; overflow: visible; background: var(--panel); }
+  .side-toggle { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
@@ -896,7 +904,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
   <button type="button" id="ws-board" aria-pressed="false" disabled title="Post Board is coming soon">Post Board <span class="soon">Coming soon</span></button>
 </nav>
 <div class="app">
-  <aside class="panel">
+  <aside class="panel" id="side-panel">
     <header class="sign">
       <a class="logo" href="./" aria-label="OpenRoad Service Map home">
         <picture>
@@ -959,7 +967,9 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
       </div>
     </div>
   </aside>
-  <main class="mapwrap"><div id="map" aria-label="Map of route and vendors"></div></main>
+  <main class="mapwrap"><div id="map" aria-label="Map of route and vendors"></div>
+    <button type="button" class="side-toggle" id="side-toggle" aria-controls="side-panel" aria-expanded="true" aria-label="Hide sidebar" title="Hide sidebar"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </main>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -978,6 +988,17 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 
   // ---------- map ----------
   const map = L.map("map", { zoomControl: true, maxZoom: 20 }).setView([39.8, -96], 4);
+  // Sidebar fold: the arrow on the map's left edge hides the sidebar and lets the map take the full width.
+  const sideBtn = $("side-toggle"), app = document.querySelector(".app");
+  function setSide(min) {
+    app.classList.toggle("side-min", min);
+    sideBtn.setAttribute("aria-expanded", String(!min));
+    sideBtn.title = sideBtn.ariaLabel = min ? "Show sidebar" : "Hide sidebar";
+    try { localStorage.setItem("orsm-side-min", min ? "1" : ""); } catch (e) {}
+    map.invalidateSize();
+  }
+  sideBtn.addEventListener("click", () => setSide(!app.classList.contains("side-min")));
+  try { if (localStorage.getItem("orsm-side-min")) setSide(true); } catch (e) {}
   // Basemap: Esri World Imagery satellite with road and place labels on top.
   const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
   L.layerGroup([
