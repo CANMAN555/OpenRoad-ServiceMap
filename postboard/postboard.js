@@ -318,25 +318,31 @@ function renderPosts() {
     </li>`;
   }).join("");
 }
+// decoding: event id -> when its row arrived. The ticker is rebuilt on every snapshot (a single posting fires several),
+// so rows still inside their 4-second arrival carry on from where they were instead of being cut off.
 let shownIds = [], tickTimer;
-const tickRow = (e, cls) => `<div class="tick ${/closed|Work complete/.test(e.text || "") ? "done" : "st-" + esc(e.status)} ${cls}" data-id="${esc(e.id)}"><span class="dot"></span><span class="tunit">TRUCK ${esc(e.truckNumber)}</span><span class="txt">${esc(e.text)}</span><span class="when">${esc(ago(e.at))}${e.by ? " · " + who(e.by) : ""}</span></div>`;
+const decoding = new Map(), DECODE_MS = 4000;
+const tickRow = (e, cls, age = 0) => `<div class="tick ${/closed|Work complete/.test(e.text || "") ? "done" : "st-" + esc(e.status)} ${cls}" data-id="${esc(e.id)}"${age ? ` style="animation-delay:-${Math.round(age)}ms"` : ""}><span class="dot"></span><span class="tunit">TRUCK ${esc(e.truckNumber)}</span><span class="txt">${esc(e.text)}</span><span class="when">${esc(ago(e.at))}${e.by ? " · " + who(e.by) : ""}</span></div>`;
 function renderLatest() {
   const top = events.slice(0, 5), ids = top.map((e) => e.id), box = $("ticker");
   if (!top.length) { box.innerHTML = `<div class="tick-empty">No repair updates yet. Every new posting and change shows up here for everyone.</div>`; shownIds = []; return; }
   const fresh = shownIds.length ? ids.filter((id) => !shownIds.includes(id)) : [];
   const leaving = shownIds.length ? shownIds.filter((id) => !ids.includes(id)).map((id) => events.find((e) => e.id === id)).filter(Boolean) : [];
-  box.innerHTML = top.map((e) => tickRow(e, fresh.includes(e.id) ? "new" : "")).join("") + leaving.map((e) => tickRow(e, "leaving")).join("");
+  const t0 = performance.now();
+  fresh.forEach((id) => decoding.set(id, t0));
+  for (const [id, at] of decoding) if (t0 - at >= DECODE_MS || !ids.includes(id)) decoding.delete(id);
+  box.innerHTML = top.map((e) => (decoding.has(e.id) ? tickRow(e, "new", t0 - decoding.get(e.id)) : tickRow(e, ""))).join("") + leaving.map((e) => tickRow(e, "leaving")).join("");
   box.classList.remove("push"); if (fresh.length) { void box.offsetWidth; box.classList.add("push"); }
   shownIds = ids;
   clearTimeout(tickTimer);
   if (leaving.length) tickTimer = setTimeout(() => { box.querySelectorAll(".tick.leaving").forEach((r) => r.remove()); }, 550);
-  box.querySelectorAll(".tick.new .tunit, .tick.new .txt").forEach(decode);
+  box.querySelectorAll(".tick.new").forEach((row) => row.querySelectorAll(".tunit, .txt").forEach((el) => decode(el, decoding.get(row.dataset.id))));
 }
 // Easter egg: a new row arrives as scrambled code and decodes, left to right, into plain English.
 const GLYPHS = "01{}[]<>/\\=;:#$&*+_ABCDEFabcdef0x";
-function decode(el) {
+function decode(el, start = performance.now()) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const final = el.textContent, start = performance.now(), dur = 4000;
+  const final = el.textContent, dur = DECODE_MS;
   el.classList.add("coding");
   const step = (t) => {
     if (!el.isConnected) return;
