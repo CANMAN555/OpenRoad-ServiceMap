@@ -945,7 +945,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
-<link rel="stylesheet" href="postboard/postboard.css">
+<link rel="stylesheet" href="postboard/postboard.css?v=3">
 
 </head>
 <body>
@@ -2096,9 +2096,10 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
 
 })();
 </script>
-<script src="postboard/config.js"></script>
-<script src="postboard/store.js"></script>
-<script src="postboard/postboard.js"></script>
-<script src="postboard/gate.js"></script>
+<!-- Bump ?v= on the Post Board files whenever they change, so browsers fetch the new copy instead of a cached one. -->
+<script src="postboard/config.js?v=3"></script>
+<script src="postboard/store.js?v=3"></script>
+<script src="postboard/postboard.js?v=3"></script>
+<script src="postboard/gate.js?v=3"></script>
 </body>
 </html>
