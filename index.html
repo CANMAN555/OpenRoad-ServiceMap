@@ -1686,11 +1686,22 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   async function getJSON(url, opts = {}, { timeout = 30000, tries = 2 } = {}) {
     let last;
+    const signal = opts.signal;
     for (let i = 0; i < tries; i++) {
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), timeout);
+      const fetchSignal = signal ? (() => {
+        const pair = new AbortController();
+        const abort = () => pair.abort();
+        if (signal.aborted) abort();
+        else {
+          signal.addEventListener("abort", abort, { once: true });
+          ctl.signal.addEventListener("abort", abort, { once: true });
+        }
+        return pair.signal;
+      })() : ctl.signal;
       try {
-        const r = await fetch(url, { ...opts, signal: ctl.signal });
+        const r = await fetch(url, { ...opts, signal: fetchSignal });
         if (r.ok) return await r.json();
         last = new Error("HTTP " + r.status);
         if (r.status !== 429 && r.status < 500) throw last; // a bad request won't get better on retry
@@ -1880,7 +1891,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     input.addEventListener("blur", () => setTimeout(close, 100));
   }
   ["from", "to", "spot"].forEach((id) => attachSuggest($(id)));
-  async function geocode(q) {
+  async function geocode(q, signal) {
     if (!String(q || "").trim()) throw new Error("Type a place first: an address, a town, or coordinates like 41.2375, -95.8780.");
     const c = parseCoords(q);
     if (c) return { lat: c.lat, lon: c.lon, label: c.lat.toFixed(5) + ", " + c.lon.toFixed(5), local: true };
@@ -1891,12 +1902,12 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       // Nominatim (OpenStreetMap's geocoder) first; Photon (komoot, same OpenStreetMap data) as the backup.
       async () => {
         const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us,ca,mx&q=" + encodeURIComponent(q);
-        const j = await getJSON(url, { headers: { "Accept-Language": "en" } }, { timeout: 15000 });
+        const j = await getJSON(url, { headers: { "Accept-Language": "en" }, signal }, { timeout: 15000 });
         return j.length ? { lat: +j[0].lat, lon: +j[0].lon, label: j[0].display_name.split(",").slice(0, 3).join(","), net: true } : null;
       },
       async () => {
         const url = "https://photon.komoot.io/api/?limit=5&lang=en&q=" + encodeURIComponent(q);
-        const j = await getJSON(url, {}, { timeout: 15000 });
+        const j = await getJSON(url, { signal }, { timeout: 15000 });
         const f = (j.features || []).find((x) => /^(US|CA|MX)$/i.test(x.properties.countrycode || ""));
         if (!f) return null;
         const p = f.properties;
@@ -1906,11 +1917,11 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     if (!hit) throw new Error(`Couldn't find "${q}". Try adding the state, or enter coordinates like 41.2375, -95.8780.`);
     return hit;
   }
-  async function route(a, b) {
+  async function route(a, b, signal) {
     const path = `/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`;
     // OSRM's demo server first; the FOSSGIS OSRM server (routing.openstreetmap.de) as the backup.
     const j = await remember("route:" + path, () => firstOk(
-      ["https://router.project-osrm.org", "https://routing.openstreetmap.de/routed-car"].map((base) => () => getJSON(base + path, {}, { timeout: 30000 }))
+      ["https://router.project-osrm.org", "https://routing.openstreetmap.de/routed-car"].map((base) => () => getJSON(base + path, { signal }, { timeout: 30000 }))
     ));
     if (j.code !== "Ok" || !j.routes.length) throw new Error("No driving route found between those places.");
     const r = j.routes[0];
@@ -1943,6 +1954,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     e.preventDefault();
     const go = $("go"); go.disabled = true;
     const searchId = ++latestSearchId;
+    const controller = new AbortController();
     const radiusM = +$("radius").value * MI;
     try {
       // A slow network response can resolve after a newer search started. Drop stale results so the map
@@ -1953,23 +1965,23 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       render(false);
       if (mode === "route") {
         status("Finding places…");
-        const a = await geocode($("from").value);
-        if (searchId !== latestSearchId) return;
+        const a = await geocode($("from").value, controller.signal);
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         if (a.net) await sleep(1100); // Nominatim asks for at most 1 request per second
-        const b = await geocode($("to").value);
-        if (searchId !== latestSearchId) return;
+        const b = await geocode($("to").value, controller.signal);
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         status("Building route…");
-        const r = await route(a, b);
-        if (searchId !== latestSearchId) return;
+        const r = await route(a, b, controller.signal);
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         const cum = cumulative(r.pts);
         const fine = thin(r.pts, cum, 300), fineCum = cumulative(fine);
         const coarse = thin(r.pts, cum, 3000);
         drawRoute(r.pts, a, b);
-        if (searchId !== latestSearchId) return;
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         status("Searching for vendors…");
         // Route points are about 3 km apart, so search a little wider and trim to the exact width below.
         const found = await findListings(coarse, radiusM + 3000);
-        if (searchId !== latestSearchId) return;
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         results = found.map((v) => {
           const pl = placeOnRoute([v.lat, v.lon], fine, fineCum);
           return { ...v, mile: pl.along / MI, off: pl.d / MI };
@@ -1977,21 +1989,21 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
         routeInfo = { from: a.label, to: b.label, miles: r.meters / MI, hours: r.seconds / 3600 };
       } else {
         status("Finding the truck's location…");
-        const s = await geocode($("spot").value || "");
-        if (searchId !== latestSearchId) return;
+        const s = await geocode($("spot").value || "", controller.signal);
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         drawSpot(s, radiusM);
-        if (searchId !== latestSearchId) return;
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         status("Searching for vendors…");
         const found = await findListings([[s.lat, s.lon]], radiusM);
-        if (searchId !== latestSearchId) return;
+        if (searchId !== latestSearchId) { controller.abort(); return; }
         results = found.map((v) => ({ ...v, mile: hav([s.lat, s.lon], [v.lat, v.lon]) / MI, off: null }));
         routeInfo = { spot: s.label, at: [s.lat, s.lon] };
       }
-      if (searchId !== latestSearchId) return;
+      if (searchId !== latestSearchId) { controller.abort(); return; }
       status(results.length ? "" : "None of the listed companies are within this distance. Try a wider search.");
       render(true);
     } catch (err) {
-      if (searchId !== latestSearchId) return;
+      if (searchId !== latestSearchId) { controller.abort(); return; }
       const msg = err instanceof TypeError ? "Couldn't reach the map services. Check your connection and try again." : err.message;
       status(msg, true);
     } finally {
