@@ -156,6 +156,10 @@
 #pb .post.is-resolved select, #pb .post.is-resolved input[type=text] { opacity: .55; cursor: not-allowed; }
 #pb .chk.done { font-weight: 600; color: var(--s-done); }
 #pb .post .head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+#pb .post { position: relative; }
+#pb .post .head { padding-right: 26px; }
+#pb .post-x { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font: 700 18px/1 system-ui, sans-serif; cursor: pointer; display: grid; place-items: center; }
+#pb .post-x:hover, #pb .post-x:focus-visible { background: var(--err); color: #fff; }
 #pb .complaint { white-space: pre-wrap; overflow-wrap: anywhere; }
 #pb .meta { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 14px; }
 #pb .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

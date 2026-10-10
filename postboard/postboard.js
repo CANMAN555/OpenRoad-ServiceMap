@@ -301,6 +301,7 @@ function renderPosts() {
   $("posts").innerHTML = list.map((p) => {
     const hist = events.filter((e) => e.postId === p.id);
     return `<li class="post ${p.resolved ? "is-resolved" : "st-" + p.status}">
+      <button type="button" class="post-x" data-act="pdel" data-id="${p.id}" aria-label="Delete posting for truck ${esc(p.truckNumber)}" title="Delete posting">&times;</button>
       <div class="head"><span class="kind">Truck</span><span class="num">${esc(p.truckNumber)}</span>
         ${p.trailerNumber ? `<span class="kind">Trailer</span><span class="num">${esc(p.trailerNumber)}</span>` : ""}
         ${pill(p.status, p.resolved)}</div>
@@ -490,6 +491,14 @@ document.addEventListener("click", (ev) => {
         if (tr) await db.doc("units/" + tr.id).update({ truckId: null });
         await db.collection("links").add({ truckId: u.id, truckNumber: u.number, trailerId: tr ? tr.id : null, trailerNumber: tr ? tr.number : "", action: "dropped", at: now(), by: me });
       }, `Trailer ${tr ? tr.number : ""} dropped. Its complaint history stays on record.`);
+      break;
+    }
+    case "pdel": {
+      const p = posts.find((x) => x.id === id); if (!p) return;
+      confirmBox(`Delete the posting for truck ${p.truckNumber}?`, `This removes the posting and its updates from the board for everyone, including the Latest updates ticker. It can't be undone.`, "Delete posting", () => write(async () => {
+        for (const e of events.filter((x) => x.postId === id)) await db.doc("events/" + e.id).delete();
+        await db.doc("posts/" + id).delete();
+      }, `Deleted the posting for truck ${p.truckNumber}.`), b);
       break;
     }
     case "remove": {
