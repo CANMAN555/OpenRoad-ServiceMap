@@ -417,7 +417,6 @@ function setFleetMin(min) {
   const t = $("fleet-toggle");
   t.setAttribute("aria-expanded", !min);
   t.title = min ? "Show Fleet" : "Hide Fleet and widen Repair posts";
-  t.querySelector("span").textContent = min ? "›" : "‹";
   t.querySelector(".sr").textContent = min ? "Show Fleet" : "Hide Fleet";
   if (min && pk) pkClose();
   try { localStorage.setItem("pb-fleet-min", min ? "1" : ""); } catch {}
