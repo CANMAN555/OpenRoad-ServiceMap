@@ -1936,27 +1936,40 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     });
   }
 
+  let latestSearchId = 0;
+
   // ---------- search ----------
   $("form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const go = $("go"); go.disabled = true;
+    const searchId = ++latestSearchId;
     const radiusM = +$("radius").value * MI;
     try {
+      // A slow network response can resolve after a newer search started. Drop stale results so the map
+      // and result list always reflect the most recent request instead of the oldest one.
       layer.clearLayers();
+      results = [];
+      routeInfo = null;
+      render(false);
       if (mode === "route") {
         status("Finding places…");
         const a = await geocode($("from").value);
+        if (searchId !== latestSearchId) return;
         if (a.net) await sleep(1100); // Nominatim asks for at most 1 request per second
         const b = await geocode($("to").value);
+        if (searchId !== latestSearchId) return;
         status("Building route…");
         const r = await route(a, b);
+        if (searchId !== latestSearchId) return;
         const cum = cumulative(r.pts);
         const fine = thin(r.pts, cum, 300), fineCum = cumulative(fine);
         const coarse = thin(r.pts, cum, 3000);
         drawRoute(r.pts, a, b);
+        if (searchId !== latestSearchId) return;
         status("Searching for vendors…");
         // Route points are about 3 km apart, so search a little wider and trim to the exact width below.
         const found = await findListings(coarse, radiusM + 3000);
+        if (searchId !== latestSearchId) return;
         results = found.map((v) => {
           const pl = placeOnRoute([v.lat, v.lon], fine, fineCum);
           return { ...v, mile: pl.along / MI, off: pl.d / MI };
@@ -1965,18 +1978,25 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       } else {
         status("Finding the truck's location…");
         const s = await geocode($("spot").value || "");
+        if (searchId !== latestSearchId) return;
         drawSpot(s, radiusM);
+        if (searchId !== latestSearchId) return;
         status("Searching for vendors…");
         const found = await findListings([[s.lat, s.lon]], radiusM);
+        if (searchId !== latestSearchId) return;
         results = found.map((v) => ({ ...v, mile: hav([s.lat, s.lon], [v.lat, v.lon]) / MI, off: null }));
         routeInfo = { spot: s.label, at: [s.lat, s.lon] };
       }
+      if (searchId !== latestSearchId) return;
       status(results.length ? "" : "None of the listed companies are within this distance. Try a wider search.");
       render(true);
     } catch (err) {
+      if (searchId !== latestSearchId) return;
       const msg = err instanceof TypeError ? "Couldn't reach the map services. Check your connection and try again." : err.message;
       status(msg, true);
-    } finally { go.disabled = false; }
+    } finally {
+      if (searchId === latestSearchId) go.disabled = false;
+    }
   });
 
   function drawRoute(pts, a, b) {
@@ -2041,7 +2061,10 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     $("list").innerHTML = shown.length ? shown.slice(0, LIST_MAX).map((v) => card(v, unit)).join("") +
         (shown.length > LIST_MAX ? `<li class="empty">Showing the nearest ${LIST_MAX} of ${shown.length}. All of them are on the map; use the filters above to narrow the list.</li>` : "") :
       (results.length ? `<li class="empty">No listings match these filters.</li>` : "");
-    if (fit === true && shown.length && routeInfo?.spot) map.fitBounds(L.latLngBounds([routeInfo.at, ...shown.map((v) => [v.lat, v.lon])]).pad(0.15), fitPad({ maxZoom: 15 }));
+    if (fit === true && shown.length && routeInfo?.spot) {
+      const bounds = L.latLngBounds([routeInfo.at, ...shown.map((v) => [v.lat, v.lon])]).pad(0.15);
+      requestAnimationFrame(() => map.fitBounds(bounds, fitPad({ maxZoom: 15 })));
+    }
   }
 
   function card(v, unit) {
@@ -2071,7 +2094,8 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
 
   function highlight(id, scroll) {
     document.querySelectorAll(".card.active").forEach((e) => e.classList.remove("active"));
-    const el = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+    const safeId = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(String(id)) : String(id).replace(/([\\"'`<>])/g, "\\$1");
+    const el = document.querySelector(`.card[data-id="${safeId}"]`);
     if (el) { el.classList.add("active"); if (scroll) el.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
   }
 
