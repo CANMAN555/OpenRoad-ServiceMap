@@ -74,7 +74,8 @@
     const rpc = async (fn, args) => {
       const r = await fetch(CFG.supabaseUrl.replace(/\/$/, "") + "/rest/v1/rpc/" + fn, {
         method: "POST",
-        headers: { apikey: CFG.supabaseAnonKey, Authorization: "Bearer " + CFG.supabaseAnonKey, "Content-Type": "application/json" },
+        // Older "anon" keys are JWTs and also go in Authorization; newer "sb_publishable_" keys go in apikey only.
+        headers: { apikey: CFG.supabaseAnonKey, ...(CFG.supabaseAnonKey.startsWith("eyJ") ? { Authorization: "Bearer " + CFG.supabaseAnonKey } : {}), "Content-Type": "application/json" },
         body: JSON.stringify({ pin, ...args }),
       });
       if (!r.ok) throw new Error("The board's database answered " + r.status + ".");
