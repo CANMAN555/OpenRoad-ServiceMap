@@ -13,8 +13,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- The fonts load without holding up the first paint; the page shows in system fonts until they arrive. -->
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&family=Orbitron:wght@800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@400;600&family=Orbitron:wght@800&display=swap"></noscript>
 <!-- Start downloading the company location files right away, alongside the map scripts. -->
 <link rel="preload" as="fetch" href="data/loves.json" crossorigin>
 <link rel="preload" as="fetch" href="data/ta.json" crossorigin>
@@ -768,6 +768,9 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-body); f
 .topnav button[aria-pressed="true"] { background: var(--orange); border-color: var(--orange); color: var(--navy); }
 .topnav button:disabled { opacity: .45; cursor: not-allowed; }
 .topnav .soon { font: 600 .68rem var(--font-body); text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; background: #2c4763; }
+.topnav .beta { font: 800 .62rem/1 "Orbitron", "Overpass Mono", monospace; text-transform: uppercase; letter-spacing: .14em; padding: 3px 5px 2px 6px; border-radius: 3px;
+  color: var(--orange); border: 1px solid currentColor; text-shadow: 0 0 6px rgba(255,107,0,.55); }
+.topnav button[aria-pressed="true"] .beta { color: var(--navy); text-shadow: none; }
 .topnav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -947,7 +950,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   <div class="ws">
     <button type="button" id="ws-map" aria-pressed="true">Map</button>
     <!-- Post Board: fleet repair postings over the same map, behind a 4-digit PIN. -->
-    <button type="button" id="ws-board" aria-pressed="false">Post Board</button>
+    <button type="button" id="ws-board" aria-pressed="false">Post Board <span class="beta">Beta</span></button>
   </div>
 </nav>
 <div class="app">
