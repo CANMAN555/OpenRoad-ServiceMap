@@ -101,6 +101,12 @@
   "lon": -70.309765,
   "why": "Company pin was 1.2 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-07)"
  },
+ "volvo:4429D": {
+  "address": "1161 W Pittman St",
+  "lat": 38.864291,
+  "lon": -94.836179,
+  "why": "Company pin was 1.8 mi from the street address; U.S. Census and OpenStreetMap agree on this point (checked 2026-10-12)"
+ },
  "volvo:5068D": {
   "address": "8101 Daytona Rd Nw",
   "lat": 35.088799,
