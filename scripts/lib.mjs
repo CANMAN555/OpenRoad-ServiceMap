@@ -120,3 +120,19 @@ export async function censusGeocode(list) {
   }
   return out;
 }
+
+// Companies that already have their own layer on the map. New vendor layers leave out any location that is the
+// same shop as one of these: within about 500 feet of one of their pins, or sharing its phone number.
+export const LIVE_LAYERS = ["loves", "ta", "freightliner", "volvo", "boss", "utility", "prestige", "timpte", "thermoking", "carrier", "fleetpride", "stm"];
+export async function liveMatcher() {
+  const pts = [], phones = new Set();
+  for (const k of LIVE_LAYERS) {
+    const d = JSON.parse(await readFile(`data/${k}.json`, "utf8"));
+    for (const s of d.stores) {
+      if (Number.isFinite(s.lat)) pts.push([s.lat, s.lon]);
+      for (const p of [s.phone, s.servicePhone]) { const n = String(p || "").replace(/\D/g, "").slice(-10); if (n.length === 10) phones.add(n); }
+    }
+  }
+  const near = (lat, lon) => pts.some(([a, b]) => Math.abs(a - lat) < 0.0015 && Math.abs((b - lon) * Math.cos(lat * Math.PI / 180)) < 0.0015);
+  return (s) => near(s.lat, s.lon) || phones.has(String(s.phone || "").replace(/\D/g, "").slice(-10));
+}

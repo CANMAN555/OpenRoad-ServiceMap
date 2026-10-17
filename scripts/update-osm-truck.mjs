@@ -5,7 +5,7 @@
 // semi trucks (a truck shop tag or a truck word in the name). Car-only chains and the companies that already have
 // their own layer on the map are left out, and duplicates (same phone, or same name within a few hundred feet) are merged.
 import { readFile } from "node:fs/promises";
-import { UA, clean, formatPhone, formatZip, writeData } from "./lib.mjs";
+import { UA, clean, formatPhone, formatZip, liveMatcher, writeData } from "./lib.mjs";
 
 const Q = `[out:json][timeout:900];
 area["ISO3166-1"="US"][admin_level=2]->.us;
@@ -54,6 +54,7 @@ function stateOf(tag, lat, lon) {
 }
 
 const els = await overpass();
+const isLive = await liveMatcher();
 const out = { tow: [], shop: [] }, seen = { tow: new Set(), shop: new Set() };
 let dropped = { noAddress: 0, car: 0, notTruck: 0, live: 0, dupe: 0 };
 const ranked = els.sort((a, b) => Object.keys(b.tags || {}).length - Object.keys(a.tags || {}).length);
@@ -78,6 +79,7 @@ for (const e of ranked) {
     hours: clean(g.opening_hours), website: clean(g.website || g["contact:website"] || g.url),
     osm: `https://www.openstreetmap.org/${e.type}/${e.id}`,
   };
+  if (isLive(s)) { dropped.live++; continue; }
   const keys = ["p" + digits, "n" + n.replace(/\W/g, "") + Math.round(lat * 150) + "," + Math.round(lon * 150)];
   let added = false;
   for (const [kind, on] of [["tow", tow], ["shop", repair || tire || mobile]]) {
