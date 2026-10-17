@@ -6,6 +6,7 @@ on:
     branches: [towing-other-vendors]
     paths:
       - scripts/update-osm-truck.mjs
+      - scripts/lib.mjs
       - .github/workflows/update-osm-truck.yml
 
 permissions:

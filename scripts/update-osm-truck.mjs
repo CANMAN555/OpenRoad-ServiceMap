@@ -23,7 +23,7 @@ const HOSTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi
 const HEAVY = /\b(truck|trucks|trucking|semi|diesel|heavy|fleet|commercial|big rig|tractor|trailer|18 ?wheel|wrecker|rotator)/;
 const CAR = /discount tire|tires plus|pep boys|belle tire|firestone complete|jiffy|midas|meineke|valvoline|express oil|les schwab|big o tire|\bntb\b|mavis|monro|goodyear auto|u-haul|enterprise|hertz|autozone|o'?reilly|napa auto|advance auto/;
 // Companies that already have their own layer on the map.
-const LIVE = /love'?s|speedco|\bta\b|travelcenters|travel centers of america|\bpetro\b|freightliner|volvo|boss truck|utility trailer|prestige trailer|timpte|thermo ?king|carrier transicold|fleetpride|truckpro|southern tire mart|\bstm\b/;
+const LIVE = /love'?s|speedco|\bta\b|travelcenters|travel centers of america|\bpetro\b|freightliner|volvo|boss truck|utility trailer|prestige trailer|timpte|thermo ?king|carrier transicold|fleetpride|truckpro|southern tire mart|\bstm\b|rush truck|\bmack\b|pomp'?s/;
 const STATES = { alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA", colorado: "CO", connecticut: "CT", delaware: "DE", "district of columbia": "DC", florida: "FL", georgia: "GA", hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA", kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD", massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO", montana: "MT", nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND", ohio: "OH", oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT", vermont: "VT", virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI", wyoming: "WY" };
 const CODES = new Set(Object.values(STATES));
 
@@ -54,7 +54,8 @@ function stateOf(tag, lat, lon) {
 }
 
 const els = await overpass();
-const isLive = await liveMatcher();
+// Also leave out the truck service chains that have their own layer in Other Vendors.
+const isLive = await liveMatcher(["mack", "rush", "pomps"]);
 const out = { tow: [], shop: [] }, seen = { tow: new Set(), shop: new Set() };
 let dropped = { noAddress: 0, car: 0, notTruck: 0, live: 0, dupe: 0 };
 const ranked = els.sort((a, b) => Object.keys(b.tags || {}).length - Object.keys(a.tags || {}).length);

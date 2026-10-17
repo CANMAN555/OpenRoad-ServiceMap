@@ -126,11 +126,12 @@ export async function censusGeocode(list) {
 export const LIVE_LAYERS = ["loves", "ta", "freightliner", "volvo", "boss", "utility", "prestige", "timpte", "thermoking", "carrier", "fleetpride", "stm"];
 // (A shared phone alone isn't enough: dealer groups often answer every store on one number, so it must also be
 // within about a mile.)
-export async function liveMatcher() {
+export async function liveMatcher(extra = []) {
   const pts = [];
   const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
-  for (const k of LIVE_LAYERS) {
-    const d = JSON.parse(await readFile(`data/${k}.json`, "utf8"));
+  for (const k of [...LIVE_LAYERS, ...extra]) {
+    let d;
+    try { d = JSON.parse(await readFile(`data/${k}.json`, "utf8")); } catch { continue; }
     for (const s of d.stores) if (Number.isFinite(s.lat)) pts.push([s.lat, s.lon, new Set([digits(s.phone), digits(s.servicePhone)].filter((n) => n.length === 10))]);
   }
   const within = (lat, lon, a, b, deg) => Math.abs(a - lat) < deg && Math.abs((b - lon) * Math.cos(lat * Math.PI / 180)) < deg;
