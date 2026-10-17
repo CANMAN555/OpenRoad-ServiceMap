@@ -2,8 +2,10 @@ name: Update truck service chains
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "37 10 * * 1"   # Mondays
   push:
-    branches: [towing-other-vendors]
+    branches: [main, towing-other-vendors]
     paths:
       - scripts/update-mack.mjs
       - scripts/update-rush.mjs
