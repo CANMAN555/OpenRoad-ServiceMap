@@ -1,0 +1,35 @@
+name: Update OpenStreetMap truck shops and towing
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [towing-other-vendors]
+    paths:
+      - scripts/update-osm-truck.mjs
+      - .github/workflows/update-osm-truck.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-osm-truck
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/update-osm-truck.mjs
+      - name: Commit if changed
+        run: |
+          git add data/towing.json data/truckshops.json
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update truck shops and towing from OpenStreetMap"
+          git push
