@@ -33,4 +33,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Update truck shops and towing from OpenStreetMap"
+          git pull --rebase origin towing-other-vendors
           git push
