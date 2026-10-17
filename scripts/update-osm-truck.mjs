@@ -112,7 +112,8 @@ async function verify(s) {
   let site = s.website;
   if (!/^https?:\/\//i.test(site)) site = "https://" + site;
   const d = s.phone.replace(/\D/g, "");
-  const home = await get(site);
+  // Some small-business sites only answer on http:// or without "www.".
+  const home = (await get(site)) || (await get(site.replace(/^https:/i, "http:"))) || (await get(site.replace(/\/\/www\./i, "//")));
   if (!home) return "site down";
   if (phoneIn(home.html, d)) return { url: home.url };
   // Many sites keep the number on a contact page.
