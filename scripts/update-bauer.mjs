@@ -22,17 +22,17 @@ const pages = await pool(slugs, 4, async (slug) => {
     if (!a || !phone) return console.warn(`${slug}: no address or phone`), null;
     // Everything about this store sits between its address and the "PASSENGER/LIGHT TRUCK" service list; the site
     // menu above it repeats every service the company offers anywhere, so it is skipped.
-    const street = clean(a[1].split(/\.\s+|\bLocation\s+/).pop()), at = body.indexOf(street), from = at < 0 ? 0 : at, region = body.slice(from, from + 4000).split(/\bPASSENGER\b/)[0];
+    const street = clean(a[1].split(/\.\s+|\bLocation\s+/).pop()), at = body.indexOf(street), from = at < 0 ? 0 : at, region = body.slice(from, from + 4000).split(/\bPASSENGER\b|\nBrands\n/)[0];
     const svc = /\bCOMMERCIAL\b([\s\S]*)$/.exec(region);
     const commercial = svc ? svc[1].split("\n").map(clean).filter((x) => x && x.length < 60 && !/^services$/i.test(x)) : [];
     // "Monday - Friday 7:30 am - 5:00 pm", "Saturday: Closed (24hr Service Available)"
     const head = (svc ? region.slice(0, svc.index) : region).replace(/\bServices\s*$/i, "").replace(/\n/g, " ");
-    const hours = [], marks = [...head.matchAll(/(Monday\s*[-–]\s*Friday|Mon\s*[-–]\s*Fri|Saturday|Sunday)\s*:?\s*/gi)];
+    const hours = [], marks = [...head.matchAll(/(Mon(?:day)?\s*(?:[-–—]|to|through|thru)\s*Fri(?:day)?|Weekdays|Saturday|Sunday)\s*:?\s*/gi)];
     marks.forEach((m, i) => {
       const v = clean(head.slice(m.index + m[0].length, i + 1 < marks.length ? marks[i + 1].index : undefined).split(/\b(?:Location|Phone|Email|Request|Get Directions|Services)\b/)[0]);
-      if (v) hours.push([clean(m[1]).replace(/^Mon(day)?\s*[-–]\s*Fri(day)?$/i, "Mon–Fri").replace(/^Saturday$/i, "Sat").replace(/^Sunday$/i, "Sun"), v]);
+      if (v) hours.push([clean(m[1]).replace(/^(Mon.*Fri.*|Weekdays)$/i, "Mon–Fri").replace(/^Saturday$/i, "Sat").replace(/^Sunday$/i, "Sun"), v]);
     });
-    if (!hours.length) console.log(`${slug}: no hours found in: ${head.slice(0, 400)}`);
+    if (!hours.some(([d]) => d === "Mon–Fri") && slug === slugs[0]) console.log(`${slug}: no weekday hours in: ${body.slice(Math.max(0, from - 600), from + 400).replace(/\n/g, " | ")}`);
     const name = clean((/<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html) || [])[1]?.replace(/<[^>]+>/g, " ")) || "";
     // The heading reads like "Saginaw (Freeway Lane) Commercial and Automotive Tires & Service".
     const k = /\b(Commercial|Automotive|Wholesale)\b/.exec(name), city = clean(a[2]);
