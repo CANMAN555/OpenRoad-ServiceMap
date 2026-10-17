@@ -15,27 +15,33 @@ const pages = await pool(slugs, 4, async (slug) => {
   try {
     const url = `${BASE}/locations/${slug}/`;
     const html = await fetchText(url), body = text(html);
-    const raw = body.replace(/\n/g, " \n ");
     const a = ADDR.exec(body.replace(/\n/g, ", ").replace(/,\s*,/g, ","));
     const phone = formatPhone((/\(\d{3}\)\s*\d{3}-\d{4}/.exec(body) || [])[0]);
     if (!a || !phone) return console.warn(`${slug}: no address or phone`), null;
-    const lines = body.split("\n").map((l) => l.trim()).filter(Boolean);
-    // Services are listed under "Commercial" and "Passenger/Light Truck" headings.
-    const ci = lines.findIndex((l) => /^commercial:?$/i.test(l));
-    const pi = lines.findIndex((l) => /^passenger/i.test(l));
-    const commercial = ci < 0 ? [] : lines.slice(ci + 1, pi > ci ? pi : ci + 15).filter((l) => l.length < 50 && !/^(hours|monday|saturday|request|get directions|location)/i.test(l));
-    const hours = [];
-    for (const m of raw.matchAll(/(Monday\s*[-–]\s*Friday|Mon\s*[-–]\s*Fri|Saturday\s*[-–]?\s*(?:&|and|-|–)?\s*Sunday|Saturday|Sunday)\s*:?\s*([^\n]{3,60})/gi)) hours.push([clean(m[1]), clean(m[2])]);
+    // Services sit in <li> lists under a "Commercial" heading and a "Passenger/Light Truck" heading.
+    let commercial = [];
+    for (const m of html.matchAll(/>\s*Commercial:?\s*</gi)) {
+      const rest = html.slice(m.index, m.index + 6000), end = rest.search(/>\s*Passenger/i);
+      const items = [...(end > 0 ? rest.slice(0, end) : rest).matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((x) => clean(x[1].replace(/<[^>]+>/g, " "))).filter((x) => x && x.length < 60);
+      if (items.length >= 2) { commercial = items; break; }
+    }
+    // "Monday - Friday: 7:30 am - 5:00 pm Saturday: Closed (24hr Service Available) Sunday: ..."
+    const hours = [], H = /(Monday\s*[-–]\s*Friday|Mon\s*[-–]\s*Fri|Saturday|Sunday)\s*:\s*/gi, hb = body.replace(/\n/g, " ");
+    const marks = [...hb.matchAll(H)];
+    marks.forEach((m, i) => { const v = clean(hb.slice(m.index + m[0].length, i + 1 < marks.length ? marks[i + 1].index : m.index + m[0].length + 60).split(/\s{2,}|Location|Phone|Email|Request/)[0]); if (v && hours.length < 3) hours.push([clean(m[1]).replace(/\s*[-–]\s*/, "–").replace("Monday–Friday", "Mon–Fri"), v]); });
+    if (slug === slugs[0]) console.log("Debug text:", body.slice(0, 1500).replace(/\n/g, " | "));
     const name = clean((/<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html) || [])[1]?.replace(/<[^>]+>/g, " "));
-    return { id: slug, name: `Bauer Built ${name && !/^bauer built/i.test(name) ? name : slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}`,
-      address: clean(a[1]), city: clean(a[2]), state: a[3], zip: a[4], phone, commercial, hours,
+    // The heading reads like "Elk Grove Village Commercial and Automotive Tires & Service".
+    const city = clean(a[2]), kind = clean((name || "").replace(/^Bauer Built\s*/i, "").replace(city, "")) || null;
+    return { id: slug, name: `Bauer Built ${slug === "durand-corporate" ? "Durand (Corporate)" : city}`, kind,
+      address: clean(a[1].split(/\.\s+|\bLocation\s+/).pop()), city, state: a[3], zip: a[4], phone, commercial, hours,
       emergency: /24\/7 emergency|24hr service/i.test(body), url };
   } catch (e) { console.warn(`${slug}: ${e.message}`); return null; }
 });
 
 const found = pages.filter(Boolean);
-const trucks = found.filter((s) => s.commercial.length || /commercial/i.test(s.name));
-console.log(`Read ${found.length} locations; ${trucks.length} offer commercial truck service; left out automotive-only: ${found.filter((s) => !trucks.includes(s)).map((s) => s.city).join(", ")}`);
+const trucks = found.filter((s) => s.commercial.length || /commercial/i.test(s.kind || ""));
+console.log(`Read ${found.length} locations; ${trucks.length} offer commercial truck service; left out automotive-only: ${found.filter((s) => !trucks.includes(s)).map((s) => `${s.city} (${s.kind})`).join(", ")}`);
 const geo = await censusGeocode(trucks.map((s) => ({ id: s.id, street: s.address, city: s.city, state: s.state, zip: s.zip })));
 const stores = [];
 for (const s of trucks) {
