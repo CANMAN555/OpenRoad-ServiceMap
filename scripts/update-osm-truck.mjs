@@ -5,7 +5,7 @@
 // semi trucks (a truck shop tag or a truck word in the name). Car-only chains and the companies that already have
 // their own layer on the map are left out, and duplicates (same phone, or same name within a few hundred feet) are merged.
 import { readFile } from "node:fs/promises";
-import { UA, clean, formatPhone, formatZip, liveMatcher, writeData } from "./lib.mjs";
+import { clean, formatPhone, formatZip, liveMatcher, writeData } from "./lib.mjs";
 
 const Q = `[out:json][timeout:900];
 area["ISO3166-1"="US"][admin_level=2]->.us;
@@ -18,6 +18,8 @@ area["ISO3166-1"="US"][admin_level=2]->.us;
   nwr["service:vehicle:hgv"="yes"](area.us);
 );
 out center tags;`;
+// overpass-api.de answers 406 to browser-like user agents, so name the project plainly.
+const UA = "OpenRoad-ServiceMap data update (github.com/CANMAN555/OpenRoad-ServiceMap)";
 const HOSTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
 
 const HEAVY = /\b(truck|trucks|trucking|semi|diesel|heavy|fleet|commercial|big rig|tractor|trailer|18 ?wheel|wrecker|rotator)/;
@@ -34,7 +36,8 @@ async function overpass() {
     for (const h of HOSTS) {
     try {
       const r = await fetch(h, { method: "POST", body: "data=" + encodeURIComponent(Q), headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA } });
-      if (r.ok) { console.log("Overpass:", h); return (await r.json()).elements; }
+      // A mirror that is behind or cut short answers with far fewer places; skip it.
+      if (r.ok) { const els = (await r.json()).elements || []; console.log("Overpass:", h, els.length, "places"); if (els.length > 800) return els; continue; }
       console.log(h, "HTTP", r.status);
     } catch (e) { console.log(h, e.message); }
     }
