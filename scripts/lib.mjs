@@ -121,22 +121,26 @@ export async function censusGeocode(list) {
   return out;
 }
 
-// Companies that already have their own layer on the map. New vendor layers leave out any location that is the
-// same shop as one of these: within about 500 feet of one of their pins, or sharing its phone number.
+// Companies that already have their own layer on the map. New vendor layers leave out any location that is the same
+// shop as one of their pins: within about 500 feet AND sharing a distinctive word of the name ("TransEdge Truck
+// Centers" next to a Volvo pin named "Transedge Truck Centers"), or sharing the phone number within about a mile.
+// A different business next door, like an independent tire shop across the lot from a Love's, stays.
 export const LIVE_LAYERS = ["loves", "ta", "freightliner", "volvo", "boss", "utility", "prestige", "timpte", "thermoking", "carrier", "fleetpride", "stm"];
-// (A shared phone alone isn't enough: dealer groups often answer every store on one number, so it must also be
-// within about a mile.)
+const GENERIC = new Set("truck trucks trucking center centers centre service services svc tire tires repair repairs shop inc llc co corp company the and of at commercial sales parts equipment trailer trailers fleet diesel heavy duty auto group sc ctr travel stop stops mobile road".split(" "));
+const words = (name) => new Set(String(name || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !GENERIC.has(w) && !/^\d+$/.test(w)));
 export async function liveMatcher(extra = []) {
   const pts = [];
   const digits = (p) => String(p || "").replace(/\D/g, "").slice(-10);
   for (const k of [...LIVE_LAYERS, ...extra]) {
     let d;
     try { d = JSON.parse(await readFile(`data/${k}.json`, "utf8")); } catch { continue; }
-    for (const s of d.stores) if (Number.isFinite(s.lat)) pts.push([s.lat, s.lon, new Set([digits(s.phone), digits(s.servicePhone)].filter((n) => n.length === 10))]);
+    for (const s of d.stores) if (Number.isFinite(s.lat)) pts.push([s.lat, s.lon, new Set([digits(s.phone), digits(s.servicePhone)].filter((n) => n.length === 10)), words(s.name)]);
   }
   const within = (lat, lon, a, b, deg) => Math.abs(a - lat) < deg && Math.abs((b - lon) * Math.cos(lat * Math.PI / 180)) < deg;
   return (s) => {
-    const ph = digits(s.phone);
-    return pts.some(([a, b, phones]) => within(s.lat, s.lon, a, b, 0.0015) || (phones.has(ph) && within(s.lat, s.lon, a, b, 0.015)));
+    // City names in store names ("Rush Truck Centers – Dallas") don't make two businesses the same shop.
+    const city = words(s.city), ph = digits(s.phone), w = [...words(s.name)].filter((x) => !city.has(x));
+    return pts.some(([a, b, phones, names]) =>
+      (within(s.lat, s.lon, a, b, 0.0015) && w.some((x) => names.has(x))) || (phones.has(ph) && within(s.lat, s.lon, a, b, 0.015)));
   };
 }
