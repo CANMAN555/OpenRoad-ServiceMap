@@ -882,6 +882,9 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .lv .cap.n small { color: var(--pop-dim); }
 .lv .hrs { font-size: 12px; margin: 4px 0 6px; padding: 5px 0; border-block: 1px solid #e3e8ec; display: grid; gap: 2px; }
 .lv .hrs b { color: var(--pop-strong); }
+.lv .dist { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 6px; padding: 3px 8px 2px 5px; border: 1px solid var(--orange); border-radius: 6px; font-size: 12.5px; color: var(--pop-strong); }
+.lv .dist svg { width: 22px; height: 13px; flex: none; background: var(--navy); border-radius: 3px; padding: 1px 2px; box-sizing: content-box; }
+.lv .dist b { color: var(--orange); font-family: var(--font-mono); }
 .lv .src { color: var(--pop-dim); font-size: 11px; margin-top: 6px; }
 /* Popup text colors: dim text is near-white light gray on the dark glass, and every popup link and detail line is the safety orange. */
 /* Phones keep the plain white popup, so the light gray applies only to the desktop glass in dark mode. */
@@ -1592,10 +1595,20 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       });
   }));
 
+  // Where the truck is after a "Near the truck" search ([lat, lon]), or null. Popups show each pin's distance from it.
+  let truckAt = null;
+  // Adds "12.4 mi from the truck" under the store name and number. Straight-line miles, the same as the result list.
+  function withTruckMiles(html, s) {
+    if (!truckAt || s.lat == null) return html;
+    const mi = hav(truckAt, [s.lat, s.lon]) / MI;
+    const row = `<div class="dist" title="Straight-line distance from the truck">${TRUCK_SVG}<span><b>${mi.toFixed(mi < 100 ? 1 : 0)} mi</b> from the truck</span></div>`;
+    return /<div class="t">[\s\S]*?<\/div>/.test(html) ? html.replace(/(<div class="t">[\s\S]*?<\/div>)/, "$1" + row) : html.replace("</h4>", "</h4>" + row);
+  }
   // A pin's popup is built the first time it's opened, so loading thousands of pins stays quick.
   // After that, Leaflet's own click handler on the pin opens it.
+  // Leaflet rebuilds a popup from this function each time it opens, so the truck distance follows the latest search.
   function openStore(st, always = true) {
-    if (!st.m.getPopup()) { st.m.bindPopup(() => st.b.popup(st.s, st.checked), { maxWidth: 290 }); st.m.openPopup(); }
+    if (!st.m.getPopup()) { st.m.bindPopup(() => withTruckMiles(st.b.popup(st.s, st.checked), st.s), { maxWidth: 290 }); st.m.openPopup(); }
     else if (always) st.m.openPopup();
   }
 
@@ -1960,6 +1973,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       // A slow network response can resolve after a newer search started. Drop stale results so the map
       // and result list always reflect the most recent request instead of the oldest one.
       layer.clearLayers();
+      truckAt = null;
       results = [];
       routeInfo = null;
       render(false);
@@ -2020,6 +2034,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   function drawSpot(s, radiusM) {
     L.circle([s.lat, s.lon], { radius: radiusM, color: cssVar("--orange"), weight: 3, fillOpacity: .08 }).addTo(layer);
     truckMarker([s.lat, s.lon], "Truck: " + s.label);
+    truckAt = [s.lat, s.lon];
     map.fitBounds(L.latLng(s.lat, s.lon).toBounds(radiusM * 2.2), fitPad());
   }
   // Side view of a semi tractor-trailer, drawn for the truck location pin.
