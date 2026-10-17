@@ -714,6 +714,8 @@
   --carrier: #37474F;       /* Carrier Transicold dealer pins (charcoal) */
   --fleetpride: #8E1B3A;    /* FleetPride pins (maroon) */
   --stm: #121212;           /* Southern Tire Mart pins (black, red letters) */
+  --towing: #D81B60;        /* Towing company pins (deep pink) */
+  --truckshops: #6D4C41;    /* Independent truck repair and tire shop pins (brown) */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -1334,6 +1336,20 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     });
     return rows.map(([k, v]) => [k, v.replace(/\bclosed\b/gi, "Closed")]);
   }
+  // Independent truck shops and towing companies listed on OpenStreetMap.
+  function osmPopup(s, checked) {
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc((s.services || []).join(" · "))}</div>
+      ${hoursBlock(s.hours ? [["Hours", s.hours.replace(/;\s*/g, "; ")]] : [])}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.website, "Company website")}
+      ${linkRow(s.osm, "Listing on OpenStreetMap")}
+      ${srcRow("OpenStreetMap contributors", checked)}
+    </div>`;
+  }
+
   function bossPopup(s, checked) {
     const g = Object.fromEntries((s.services || []).map((x) => [x.name.replace(/\*$/, "").toUpperCase(), x.items]));
     const tires = g.TIRES || [];
@@ -1560,6 +1576,10 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     { key: "carrier", label: "Carrier Transicold", letter: "C", color: "--carrier", text: "#fff", popup: carrierPopup, z: -500 },
     { key: "fleetpride", label: "FleetPride", letter: "FP", color: "--fleetpride", text: "#fff", popup: fleetpridePopup, z: -50 },
     { key: "stm", label: "Southern Tire Mart", letter: "ST", color: "--stm", text: "#FF5252", popup: stmPopup, z: 150 },
+    { key: "towing", section: "towing", label: "Towing companies", letter: "TW", color: "--towing", text: "#fff", popup: osmPopup, z: -600 },
+    { key: "truckshops", section: "other", label: "Truck repair & tire shops", letter: "R", color: "--truckshops", text: "#fff", popup: osmPopup, z: -700,
+      // M = mobile repair, T = tire shop, R = repair shop.
+      pinLetter: (s) => (s.services.includes("Mobile repair") ? "M" : s.services.includes("Tires") && !s.services.includes("Repair") ? "T" : "R") },
   ];
   // Filter sections, in the order they show under the search box and in the map's company box.
   // A company joins one with section: "towing" or "other"; without one it is a repair shop or fuel stop.

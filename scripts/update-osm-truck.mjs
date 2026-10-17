@@ -27,13 +27,17 @@ const LIVE = /love'?s|speedco|\bta\b|travelcenters|travel centers of america|\bp
 const STATES = { alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA", colorado: "CO", connecticut: "CT", delaware: "DE", "district of columbia": "DC", florida: "FL", georgia: "GA", hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA", kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD", massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO", montana: "MT", nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND", ohio: "OH", oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT", vermont: "VT", virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI", wyoming: "WY" };
 const CODES = new Set(Object.values(STATES));
 
+// Public Overpass servers turn away heavy queries when busy (429/504), so try each server, then wait and go again.
 async function overpass() {
-  for (const h of HOSTS) {
+  for (let round = 0; round < 4; round++) {
+    if (round) await new Promise((r) => setTimeout(r, 90000));
+    for (const h of HOSTS) {
     try {
       const r = await fetch(h, { method: "POST", body: "data=" + encodeURIComponent(Q), headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA } });
       if (r.ok) { console.log("Overpass:", h); return (await r.json()).elements; }
       console.log(h, "HTTP", r.status);
     } catch (e) { console.log(h, e.message); }
+    }
   }
   throw new Error("No Overpass server answered");
 }
