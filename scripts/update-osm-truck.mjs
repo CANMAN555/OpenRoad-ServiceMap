@@ -89,5 +89,5 @@ for (const e of ranked) {
 }
 console.log("Dropped:", JSON.stringify(dropped));
 const meta = { source: "OpenStreetMap contributors (ODbL), openstreetmap.org/copyright", fetched_at: new Date().toISOString() };
-await writeData("towing", { ...meta, stores: out.tow }, 20);
-await writeData("truckshops", { ...meta, stores: out.shop }, 200);
+await writeData("towing", { ...meta, count: out.tow.length, stores: out.tow }, 20);
+await writeData("truckshops", { ...meta, count: out.shop.length, stores: out.shop }, 200);
