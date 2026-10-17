@@ -125,7 +125,7 @@ export async function censusGeocode(list) {
 // shop as one of their pins: within about 500 feet AND sharing a distinctive word of the name ("TransEdge Truck
 // Centers" next to a Volvo pin named "Transedge Truck Centers"), or sharing the phone number within about a mile.
 // A different business next door, like an independent tire shop across the lot from a Love's, stays.
-export const LIVE_LAYERS = ["loves", "ta", "freightliner", "volvo", "boss", "utility", "prestige", "timpte", "thermoking", "carrier", "fleetpride", "stm"];
+export const LIVE_LAYERS = ["loves", "ta", "freightliner", "volvo", "boss", "utility", "prestige", "timpte", "thermoking", "carrier", "fleetpride", "stm", "pomps", "bauer"];
 const GENERIC = new Set("truck trucks trucking center centers centre service services svc tire tires repair repairs shop inc llc co corp company the and of at commercial sales parts equipment trailer trailers fleet diesel heavy duty auto group sc ctr travel stop stops mobile road".split(" "));
 const words = (name) => new Set(String(name || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !GENERIC.has(w) && !/^\d+$/.test(w)));
 export async function liveMatcher(extra = []) {

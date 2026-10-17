@@ -19,6 +19,8 @@ on:
       - scripts/update-carrier.mjs
       - scripts/update-fleetpride.mjs
       - scripts/update-stm.mjs
+      - scripts/update-pomps.mjs
+      - scripts/update-bauer.mjs
       - .github/workflows/update-vendors.yml
 
 permissions:
@@ -70,9 +72,15 @@ jobs:
       - name: Southern Tire Mart
         run: node scripts/update-stm.mjs
         continue-on-error: true
+      - name: Pomp's Tire
+        run: node scripts/update-pomps.mjs
+        continue-on-error: true
+      - name: Bauer Built
+        run: node scripts/update-bauer.mjs
+        continue-on-error: true
       - name: Commit if changed
         run: |
-          for f in data/ta.json data/freightliner.json data/volvo.json data/boss.json data/utility.json data/prestige.json data/timpte.json data/thermoking.json data/carrier.json data/fleetpride.json data/stm.json; do [ -f "$f" ] && git add "$f"; done
+          for f in data/ta.json data/freightliner.json data/volvo.json data/boss.json data/utility.json data/prestige.json data/timpte.json data/thermoking.json data/carrier.json data/fleetpride.json data/stm.json data/pomps.json data/bauer.json; do [ -f "$f" ] && git add "$f"; done
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

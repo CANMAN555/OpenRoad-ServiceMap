@@ -6,7 +6,6 @@ on:
     branches: [towing-other-vendors]
     paths:
       - scripts/update-mack.mjs
-      - scripts/update-pomps.mjs
       - scripts/update-rush.mjs
       - scripts/lib.mjs
       - .github/workflows/update-chains.yml
@@ -29,16 +28,14 @@ jobs:
           node-version: 22
       - run: node scripts/update-mack.mjs
         continue-on-error: true
-      - run: node scripts/update-pomps.mjs
-        continue-on-error: true
       - run: node scripts/update-rush.mjs
         continue-on-error: true
       - name: Commit if changed
         run: |
-          for f in data/mack.json data/pomps.json data/rush.json; do [ -f "$f" ] && git add "$f"; done
+          for f in data/mack.json data/rush.json; do [ -f "$f" ] && git add "$f"; done
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update Mack, Pomp's and Rush locations"
+          git commit -m "Update Mack and Rush locations"
           git pull --rebase
           git push
