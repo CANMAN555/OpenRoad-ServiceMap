@@ -80,4 +80,4 @@ const payload = {
   stores,
 };
 console.log(JSON.stringify(payload.counts));
-await writeData("mack", payload, 100);
+await writeData("mack", payload, 40);

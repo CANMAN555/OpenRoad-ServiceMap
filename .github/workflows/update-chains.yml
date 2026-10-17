@@ -35,7 +35,7 @@ jobs:
         continue-on-error: true
       - name: Commit if changed
         run: |
-          git add data/mack.json data/pomps.json data/rush.json 2>/dev/null || true
+          for f in data/mack.json data/pomps.json data/rush.json; do [ -f "$f" ] && git add "$f"; done
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -716,6 +716,9 @@
   --stm: #121212;           /* Southern Tire Mart pins (black, red letters) */
   --towing: #D81B60;        /* Towing company pins (deep pink) */
   --truckshops: #6D4C41;    /* Independent truck repair and tire shop pins (brown) */
+  --mack: #B0BEC5;          /* Mack Trucks dealer pins (silver, navy letters) */
+  --rush: #7CB342;          /* Rush Truck Centers pins (green, navy letters) */
+  --pomps: #10312B;         /* Pomp's Tire pins (Pomp's dark green) */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -1321,6 +1324,41 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       ${srcRow("Volvo Trucks' dealer locator", checked)}
     </div>`;
   }
+  function mackPopup(s, checked) {
+    const typeName = { "Full Line": "Mack full-line dealer", Satellite: "Mack satellite service location", "Parts & Service": "Mack parts & service location", "Parts Only": "Mack parts store (no service)", Associate: "Mack associate dealer" }[s.type] || `Mack ${s.type || "dealer"}`;
+    const hrs = [["Service", dayRanges(s.hours && s.hours.service)], ["Parts", dayRanges(s.hours && s.hours.parts)], ["On call", dayRanges(s.hours && s.hours.onCall)]].filter(([, v]) => v);
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc(typeName)}</div>
+      <div class="caps">
+        ${cap(s.service, "Truck repair", s.service ? (s.keyServices || []).filter((n) => !/uptime|road service|towing|tire/i.test(n)).join(", ") : "Parts only")}
+        ${cap(s.uptime, "Mack Certified Uptime Center", "")}
+        ${cap(s.roadService, "Road service", "", "Yes", "Not listed")}
+        ${cap(s.towing, "Towing", "", "Yes", "Not listed")}
+        ${cap(s.tires, "Tire repair", "", "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(hrs)}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${s.servicePhone && s.servicePhone !== s.phone ? phoneRow("Service", s.servicePhone) : ""}
+      ${phoneRow("Toll free", s.tollFree)}
+      ${linkRow(s.website, "Dealer website")}
+      ${linkRow("https://www.macktrucks.com/find-a-dealer/", "Mack dealer locator")}
+      ${srcRow("Mack Trucks' dealer locator", checked)}
+    </div>`;
+  }
+  // Chain locations with a plain list of services (Rush Truck Centers, Pomp's Tire).
+  const chainPopup = (source, link) => (s, checked) => `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc((s.services || []).join(" · "))}</div>
+      ${hoursBlock((s.hours || []).length ? s.hours.map(([d, h]) => [d || "Service", h]) : [])}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${(s.phones || []).map(([l, p]) => phoneRow(l, p)).join("")}
+      ${linkRow(s.url, link)}
+      ${srcRow(source, checked)}
+    </div>`;
+
 
   // ["M-F: 5 AM - 11 PM", "Sat & Sun: Sat: 7 AM - 11 PM Sun: CLOSED"] -> [["Mon–Fri","5 AM - 11 PM"],["Sat","7 AM - 11 PM"],["Sun","Closed"]]
   function bossHours(lines) {
@@ -1576,6 +1614,9 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     { key: "carrier", label: "Carrier Transicold", letter: "C", color: "--carrier", text: "#fff", popup: carrierPopup, z: -500 },
     { key: "fleetpride", label: "FleetPride", letter: "FP", color: "--fleetpride", text: "#fff", popup: fleetpridePopup, z: -50 },
     { key: "stm", label: "Southern Tire Mart", letter: "ST", color: "--stm", text: "#FF5252", popup: stmPopup, z: 150 },
+    { key: "mack", section: "other", label: "Mack Trucks", letter: "MK", color: "--mack", text: "#0B1F33", popup: mackPopup, z: -550 },
+    { key: "rush", section: "other", label: "Rush Truck Centers", letter: "RT", color: "--rush", text: "#0B1F33", popup: chainPopup("rushtruckcenters.com", "Location page on rushtruckcenters.com"), z: -560 },
+    { key: "pomps", section: "other", label: "Pomp's Tire", letter: "PT", color: "--pomps", text: "#fff", popup: chainPopup("pompstire.com", "Pomp's Tire locations"), z: -570 },
     { key: "towing", section: "towing", label: "Towing companies", letter: "TW", color: "--towing", text: "#fff", popup: osmPopup, z: -600 },
     { key: "truckshops", section: "other", label: "Truck repair & tire shops", letter: "R", color: "--truckshops", text: "#fff", popup: osmPopup, z: -700,
       // M = mobile repair, T = tire shop, R = repair shop.
