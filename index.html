@@ -819,6 +819,16 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .btn.small { padding: 6px 10px; font-size: .82rem; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cats { display: grid; gap: 12px; }
+.cat-sec { display: grid; gap: 6px; }
+.cat-head { display: flex; align-items: center; gap: 7px; font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); cursor: pointer; }
+.cat-head input { margin: 0; accent-color: var(--sign); }
+.cat-head input:disabled { cursor: default; }
+.cat-head .n { font-family: var(--font-mono); font-size: .72rem; letter-spacing: 0; border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; }
+.cat-none { font-size: .84rem; color: var(--muted); font-style: italic; padding: 2px 0; }
+.layer-toggle .lt-head { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 4px; }
+.layer-toggle .lt-head:first-child { margin-top: 0; }
+.layer-toggle .lt-none { font-size: 12px; font-weight: 400; font-style: italic; color: var(--muted); }
 .chip { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 600; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px 5px 8px; cursor: pointer; user-select: none; }
 .chip input { margin: 0; accent-color: var(--sign); }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
@@ -1002,7 +1012,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
           <button type="submit" class="btn primary" id="go" style="flex:0 0 auto">Find vendors</button>
         </div>
 
-        <fieldset class="chips" id="cats" style="border:0;padding:0;margin:0">
+        <fieldset class="cats" id="cats" style="border:0;padding:0;margin:0">
           <legend class="sr" style="position:absolute;left:-9999px">Companies</legend>
         </fieldset>
         <div class="status" id="status" role="status" aria-live="polite"></div>
@@ -1551,11 +1561,21 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     { key: "fleetpride", label: "FleetPride", letter: "FP", color: "--fleetpride", text: "#fff", popup: fleetpridePopup, z: -50 },
     { key: "stm", label: "Southern Tire Mart", letter: "ST", color: "--stm", text: "#FF5252", popup: stmPopup, z: 150 },
   ];
+  // Filter sections, in the order they show under the search box and in the map's company box.
+  // A company joins one with section: "towing" or "other"; without one it is a repair shop or fuel stop.
+  const SECTIONS = [
+    { key: "shops", label: "Repair shops & fuel" },
+    { key: "towing", label: "Towing" },
+    { key: "other", label: "Other Vendors" },
+  ];
+  const secOf = (b) => b.section || "shops";
+  const inSection = (key) => BRANDS.filter((b) => secOf(b) === key);
   const brandCtl = L.control({ position: "topright" });
   brandCtl.onAdd = () => {
     const div = L.DomUtil.create("div", "layer-toggle");
-    div.innerHTML = BRANDS.map((b) =>
-      `<label id="lt-${b.key}"><input type="checkbox" checked disabled><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span><span class="nm">${b.label}</span></label>`).join("");
+    div.innerHTML = SECTIONS.map((sec) => `<div class="lt-head">${sec.label}</div>` + (inSection(sec.key).map((b) =>
+      `<label id="lt-${b.key}"><input type="checkbox" checked disabled><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span><span class="nm">${b.label}</span></label>`).join("")
+      || `<div class="lt-none">No companies added yet</div>`)).join("");
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
@@ -1613,8 +1633,23 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   }
 
   // ---------- company chips: which companies the results list shows ----------
-  $("cats").insertAdjacentHTML("beforeend", BRANDS.map((b) =>
-    `<label class="chip"><input type="checkbox" id="cat-${b.key}" value="${b.key}" checked><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span>${b.label}</label>`).join(""));
+  // One group per section: a heading with a checkbox for the whole section, then its company chips.
+  $("cats").insertAdjacentHTML("beforeend", SECTIONS.map((sec) => {
+    const list = inSection(sec.key);
+    return `<div class="cat-sec" data-sec="${sec.key}">
+      <label class="cat-head"><input type="checkbox" id="sec-${sec.key}" data-sec="${sec.key}" ${list.length ? "checked" : "disabled"}>${sec.label}<span class="n">${list.length}</span></label>
+      <div class="chips">${list.map((b) =>
+        `<label class="chip"><input type="checkbox" id="cat-${b.key}" value="${b.key}" checked><span class="dot" style="background:var(${b.color});border:1px solid var(--navy)"></span>${b.label}</label>`).join("")
+        || `<span class="cat-none">No companies added yet.</span>`}</div>
+    </div>`;
+  }).join(""));
+  // A section's checkbox is ticked when all its companies are on, half-ticked when some are.
+  function syncSection(secKey) {
+    const box = $("sec-" + secKey), list = inSection(secKey);
+    if (!box || !list.length) return;
+    const on = list.filter((b) => $("cat-" + b.key).checked).length;
+    box.checked = on === list.length; box.indeterminate = on > 0 && on < list.length;
+  }
   // A company's checkbox (under the search box or in the map's top-right box) shows or hides its
   // pins on the map right away, with or without a search, and keeps the two boxes in step.
   function showBrand(key, on) {
@@ -1622,9 +1657,13 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     if (chip) chip.checked = on;
     if (box) box.checked = on;
     if (group) on ? group.addTo(map) : map.removeLayer(group);
+    const b = BRANDS.find((x) => x.key === key); if (b) syncSection(secOf(b));
     render();
   }
-  $("cats").addEventListener("change", (e) => { if (e.target.id.startsWith("cat-")) showBrand(e.target.value, e.target.checked); });
+  $("cats").addEventListener("change", (e) => {
+    if (e.target.id.startsWith("cat-")) showBrand(e.target.value, e.target.checked);
+    else if (e.target.dataset.sec) { const on = e.target.checked; inSection(e.target.dataset.sec).forEach((b) => showBrand(b.key, on)); }
+  });
   $("phone-only").addEventListener("change", render);
   $("h24-only").addEventListener("change", render);
 
