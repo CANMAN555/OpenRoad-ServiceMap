@@ -899,6 +899,7 @@ input[type="text"], select { font: 400 1rem var(--font-body); color: var(--fg); 
 .lv .cap.n small { color: var(--pop-dim); }
 .lv .hrs { font-size: 12px; margin: 4px 0 6px; padding: 5px 0; border-block: 1px solid #e3e8ec; display: grid; gap: 2px; }
 .lv .hrs b { color: var(--pop-strong); }
+.lv .hrs .sub { font-size: 11px; color: var(--pop-dim); }
 .lv .dist { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 6px; padding: 3px 8px 2px 5px; border: 1px solid var(--orange); border-radius: 6px; font-size: 12.5px; color: var(--pop-strong); }
 .lv .dist svg { width: 22px; height: 13px; flex: none; background: var(--navy); border-radius: 3px; padding: 1px 2px; box-sizing: content-box; }
 .lv .dist b { color: var(--orange); font-family: var(--font-mono); }
@@ -1373,14 +1374,23 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     return rows.map(([k, v]) => [k, v.replace(/\bclosed\b/gi, "Closed")]);
   }
   // Independent truck shops and towing companies listed on OpenStreetMap.
+  // OpenStreetMap opening_hours ("Mo-Fr 08:00-17:30; Sa 08:00-12:00", "24/7") in plain words.
+  const OSM_DAYS = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "holidays" };
+  const osmClock = (h, m) => `${+h % 12 || 12}${m === "00" ? "" : ":" + m} ${+h < 12 || +h === 24 ? "a.m." : "p.m."}`;
+  const osmHours = (h) => /^\s*24\/7\s*$/.test(h) ? "Open 24 hours" : h
+    .replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, (d) => OSM_DAYS[d])
+    .replace(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/g, (_, a, b, c, d) => a === "00" && b === "00" && (c === "24" || c === "23") ? "24 hours" : `${osmClock(a, b)} – ${osmClock(c, d)}`)
+    .replace(/(\w)-(\w)/g, "$1–$2").replace(/\boff\b/gi, "Closed").replace(/\s*;\s*/g, "; ").replace(/,(?=\S)/g, ", ");
   function osmPopup(s, checked) {
+    const verified = s.verified ? new Date(s.verified + "T12:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "";
     return `<div class="lv">
       <h4>${esc(s.name)}</h4>
       <div class="t">${esc((s.services || []).join(" · "))}</div>
-      ${hoursBlock(s.hours ? [["Hours", s.hours.replace(/;\s*/g, "; ")]] : [])}
+      ${verified ? `<div class="note">Phone number checked on the company's own website ${esc(verified)}.</div>` : ""}
+      ${hoursBlock(s.hours ? [["Hours", osmHours(s.hours)]] : [], s.hours ? `<div class="sub">Hours from OpenStreetMap. Call to confirm.</div>` : "")}
       ${addrRow(s)}
       ${phoneRow("", s.phone)}
-      ${linkRow(s.website, "Company website")}
+      ${linkRow(s.verifiedUrl || s.website, "Company website")}
       ${linkRow(s.osm, "Listing on OpenStreetMap")}
       ${srcRow("OpenStreetMap contributors", checked)}
     </div>`;
