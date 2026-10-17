@@ -25,7 +25,6 @@ for (let i = start; i < html.length; i++) {
   else if (c === "}" || c === "]") { depth--; if (depth === 0) { end = i + 1; break; } }
 }
 const { items = [] } = JSON.parse(html.slice(start, end));
-console.log("Location fields:", Object.keys(items[0] || {}).join(", "));
 console.log("locations in feed:", items.length);
 
 const stores = [];

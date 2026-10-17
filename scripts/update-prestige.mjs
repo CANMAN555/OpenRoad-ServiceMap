@@ -24,7 +24,6 @@ async function feedUrl() {
 }
 
 const list = JSON.parse(await fetchText(await feedUrl(), { accept: "application/json" }));
-console.log("Feed fields:", Object.keys(list[0] || {}).join(", "));
 const site = (w) => { w = clean(w); return w ? (/^https?:\/\//i.test(w) ? w : "https://" + w.replace(/^\/+/, "")) : null; };
 const stores = list
   .filter((d) => d && d.public !== false && US.has(clean(d.province)) && Number.isFinite(+d.lat) && Number.isFinite(+d.lng) && +d.lat !== 0)
