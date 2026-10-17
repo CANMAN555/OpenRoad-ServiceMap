@@ -28,6 +28,7 @@
 <link rel="preload" as="fetch" href="data/carrier.json" crossorigin>
 <link rel="preload" as="fetch" href="data/fleetpride.json" crossorigin>
 <link rel="preload" as="fetch" href="data/stm.json" crossorigin>
+<link rel="preload" as="fetch" href="data/pomps.json" crossorigin>
 <style>
 /* required styles */
  
@@ -714,6 +715,8 @@
   --carrier: #37474F;       /* Carrier Transicold dealer pins (charcoal) */
   --fleetpride: #8E1B3A;    /* FleetPride pins (maroon) */
   --stm: #121212;           /* Southern Tire Mart pins (black, red letters) */
+  --pomps: #10312B;         /* Pomp's Tire pins (Pomp's dark green) */
+  --bauer: #827717;         /* Bauer Built pins (olive) */
   --bg: var(--offwhite);
   --panel: #ffffff;
   --fg: var(--navy);
@@ -1479,6 +1482,35 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     </div>`;
   }
 
+  function pompsPopup(s, checked) {
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">Pomp's Tire Service</div>
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.url, "Pomp's Tire locations")}
+      ${srcRow("Pomp's Tire's location list", checked)}
+    </div>`;
+  }
+
+  function bauerPopup(s, checked) {
+    const svc = s.commercial || [];
+    const short = svc.length > 8 ? svc.slice(0, 8).join(", ") + `, and ${svc.length - 8} more` : svc.join(", ");
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc(s.kind || "Bauer Built Tire & Service")}</div>
+      <div class="caps">
+        ${cap(svc.length > 0, "Commercial truck service", short, "Yes", "Not listed")}
+        ${cap(s.emergency, "24/7 emergency tire service", "", "Yes", "Not listed")}
+      </div>
+      ${hoursBlock(dayRanges(s.hours) ? [["Hours", dayRanges(s.hours)]] : [])}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.url, "Location page on bauerbuilt.com")}
+      ${srcRow("Bauer Built's location pages", checked)}
+    </div>`;
+  }
+
   function carrierPopup(s, checked) {
     const svc = (s.services || []).filter((n) => !/^(24\/7|Mobile Service|APU)$/.test(n));
     return `<div class="lv">
@@ -1550,6 +1582,8 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     { key: "carrier", label: "Carrier Transicold", letter: "C", color: "--carrier", text: "#fff", popup: carrierPopup, z: -500 },
     { key: "fleetpride", label: "FleetPride", letter: "FP", color: "--fleetpride", text: "#fff", popup: fleetpridePopup, z: -50 },
     { key: "stm", label: "Southern Tire Mart", letter: "ST", color: "--stm", text: "#FF5252", popup: stmPopup, z: 150 },
+    { key: "pomps", label: "Pomp's Tire", letter: "PT", color: "--pomps", text: "#fff", popup: pompsPopup, z: 140 },
+    { key: "bauer", label: "Bauer Built", letter: "BB", color: "--bauer", text: "#fff", popup: bauerPopup, z: 130 },
   ];
   const brandCtl = L.control({ position: "topright" });
   brandCtl.onAdd = () => {
