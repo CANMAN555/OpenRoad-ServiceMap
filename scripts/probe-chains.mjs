@@ -1,10 +1,9 @@
-// One-off probe, round 2: page structure of the chain locators that answered.
+// One-off probe, round 3: what a Rush Truck Centers location page carries.
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36";
 const get = async (u) => { const r = await fetch(u, { headers: { "User-Agent": UA } }); return [r.status, await r.text()]; };
-const around = (t, re, n = 900) => { const i = t.search(re); return i < 0 ? "(not found)" : t.slice(Math.max(0, i - 200), i + n).replace(/\s+/g, " "); };
-const sm = async (u, re) => { const [st, t] = await get(u); const locs = [...t.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]); const hit = locs.filter((l) => re.test(l)); console.log(u, st, "locs", locs.length, "match", hit.length, hit.slice(0, 4).join(" ")); return hit; };
-try { const [, t] = await get("https://www.pompstire.com/locations"); console.log("POMPS", around(t, /Aberdeen/, 1600)); } catch (e) { console.log("pomps", e.message); }
-try { const subs = await sm("https://www.rushtruckcenters.com/sitemap.xml", /location/i); if (subs[0]) { const [st, t] = await get(subs[0]); console.log("RUSH page", st, around(t, /application\/ld\+json/, 1500)); } } catch (e) { console.log("rush", e.message); }
-try { const [, t] = await get("https://www.peterbilt.com/dealer-locator"); console.log("PB api", [...new Set([...t.matchAll(/["'](\/?[a-z0-9\-\/_.]*(?:api|dealer)[a-z0-9\-\/_.?=&]*)["']/gi)].map((m) => m[1]))].slice(0, 30).join(" ")); console.log("PB js", [...t.matchAll(/src="([^"]+\.js)"/g)].map((m) => m[1]).slice(0, 8).join(" ")); await sm("https://www.peterbilt.com/sitemap.xml", /dealer/i); } catch (e) { console.log("pb", e.message); }
-try { await sm("https://www.international.com/sitemap.xml", /dealer/i); } catch (e) { console.log("intl", e.message); }
-try { const [, t] = await get("https://purcelltire.com/wp-sitemap.xml"); console.log("PURCELL", [...t.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).join(" ")); const [, l] = await get("https://purcelltire.com/locations/"); console.log("PURCELL page", around(l, /asl_configuration|asl_stores|var asl/, 800)); } catch (e) { console.log("purcell", e.message); }
+const [, t] = await get("https://www.rushtruckcenters.com/locations/10140000-abilene");
+for (const re of [/"@type":\s*"(?:AutoDealer|LocalBusiness|Store|AutomotiveBusiness)"/, /latitude|data-lat|"lat"/i, /tel:/, /streetAddress|address/i, /Towing|Mobile Service|Collision/i]) {
+  const i = t.search(re); console.log(re, i < 0 ? "(none)" : t.slice(Math.max(0, i - 300), i + 700).replace(/\s+/g, " "));
+}
+const [, d] = await get("https://www.rushtruckcenters.com/dealership-directory/all-locations");
+console.log("DIRECTORY", d.length, d.slice(d.search(/Abilene/) - 400, d.search(/Abilene/) + 900).replace(/\s+/g, " "));
