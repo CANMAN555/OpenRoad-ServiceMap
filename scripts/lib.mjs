@@ -166,8 +166,9 @@ const SEMI_SITE = /\b(semis?|semi-?trucks?|tractor[- ](?:trailers?|trucks?)|clas
 export function semiOnly(name, text) {
   const n = CAR_NAME.exec(name || "");
   if (n) return `name says "${n[0]}"`;
-  // "We do not work on cars" or "No cars, no pickups" says the opposite, so sentences with a "no" are skipped.
-  const said = String(text || "").split(/[.!?;:]\s/).filter((x) => !/\b(no|not|never|don't|won't|doesn't|except)\b/.test(x)).join(". ");
+  // "We do not work on cars", "No cars, no pickups" and "Do you work on cars?" say the opposite, so sentences with a
+  // "no" and questions are skipped.
+  const said = String(text || "").split(/(?<=[.!?;:])\s/).filter((x) => !/\?$/.test(x) && !/\b(no|not|never|don't|won't|doesn't|except)\b/.test(x)).join(" ");
   const c = CAR_SITE.exec(said);
   if (c) return `website mentions "${c[0]}"`;
   if (!SEMI_SITE.test(text || "")) return "website does not mention semis or heavy trucks";
