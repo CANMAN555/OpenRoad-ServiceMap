@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        The vendor's own website must show the phone number below, and the street address must be found on the map.
-        If both check out, the pin is added automatically. You get a comment here either way.
+        Claude checks that the business is real before a pin goes up: it finds the vendor's own website, makes sure
+        the phone number below is on it, looks up the street address and adds the store hours. You get a comment here either way.
   - type: input
     id: name
     attributes:
@@ -61,19 +61,6 @@ body:
       placeholder: (555) 555-1234
     validations:
       required: true
-  - type: input
-    id: website
-    attributes:
-      label: Website
-      description: The vendor's own website. It must show the same phone number.
-      placeholder: https://example.com
-    validations:
-      required: true
-  - type: input
-    id: hours
-    attributes:
-      label: Hours
-      placeholder: Mon–Fri 7 a.m. – 6 p.m.; Sat 8 a.m. – 12 p.m.; 24/7 road service
   - type: textarea
     id: notes
     attributes:

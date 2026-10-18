@@ -1,7 +1,8 @@
 name: Add a vendor
 
-# Runs when an "Add a vendor" request is opened, edited, or labeled "approved". The request text is read from the
-# event file by scripts/add-vendor.mjs; it is never pasted into a shell command.
+# Runs when an "Add a vendor" request is opened or edited, when Claude labels it "checked-by-claude" after finding the
+# vendor's website and hours, or when the map owner labels it "approved". The request text is read by
+# scripts/add-vendor.mjs; it is never pasted into a shell command.
 on:
   issues:
     types: [opened, edited, labeled]
@@ -16,10 +17,10 @@ concurrency:
 
 jobs:
   check:
-    # Requests from the map's form or the issue template start with "Add vendor:". Labeling re-runs it only for "approved".
+    # Requests from the map's form or the issue template start with "Add vendor:". Of the labels, only these two re-run it.
     if: >-
       startsWith(github.event.issue.title, 'Add vendor:') && github.event.issue.state == 'open' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'approved')
+      (github.event.action != 'labeled' || github.event.label.name == 'approved' || github.event.label.name == 'checked-by-claude')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,12 +32,15 @@ jobs:
         run: |
           gh label create add-vendor --color FF6B00 --description "Request to add a vendor to the map" --force || true
           gh label create approved --color 2E7D32 --description "Map owner approved this vendor request" --force || true
+          gh label create needs-research --color FBC02D --description "Waiting for Claude to find the vendor's website and hours" --force || true
+          gh label create checked-by-claude --color 1565C0 --description "Claude found the vendor's website and hours" --force || true
         env:
           GH_TOKEN: ${{ github.token }}
       - id: run
         run: node scripts/add-vendor.mjs
         env:
           REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Save the new pin
         if: steps.run.outputs.added == 'true'
         run: |
@@ -49,9 +53,10 @@ jobs:
         env:
           ISSUE: ${{ github.event.issue.number }}
       - name: Report back on the request
-        if: always() && hashFiles('comment.md') != ''
+        if: always() && (hashFiles('comment.md') != '' || hashFiles('labels.txt') != '')
         run: |
-          gh issue comment "$ISSUE" --body-file comment.md
+          if [ -f comment.md ]; then gh issue comment "$ISSUE" --body-file comment.md; fi
+          if [ -f labels.txt ]; then gh issue edit "$ISSUE" --add-label "$(cat labels.txt)"; fi
           if [ "$ADDED" = "true" ]; then gh issue close "$ISSUE" --reason completed; fi
         env:
           GH_TOKEN: ${{ github.token }}

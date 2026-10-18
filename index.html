@@ -1008,7 +1008,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
 <dialog id="av" aria-labelledby="av-title">
   <form id="av-form" method="dialog" autocomplete="off" novalidate>
     <h2 id="av-title">Add a vendor</h2>
-    <p>Fill this in and press Send request. It opens a request on GitHub (a free GitHub sign-in is needed). The vendor's own website is then checked for the same phone number and the address is looked up. If both check out, the new pin goes on the map.</p>
+    <p>Fill this in and press Send request. It opens a request on GitHub (a free GitHub sign-in is needed). Claude then checks that the business is real: it finds the vendor's own website, makes sure the same phone number is on it, looks up the address and adds the store hours. If everything checks out, the new pin goes on the map.</p>
     <label class="f"><span>Business name <span class="req">*</span></span><input type="text" id="av-name" maxlength="100" required></label>
     <label class="f"><span>Section <span class="req">*</span></span>
       <select id="av-section" required>
@@ -1032,11 +1032,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       <label class="f"><span>State <span class="req">*</span></span><input type="text" id="av-state" maxlength="2" placeholder="TX" required></label>
       <label class="f"><span>ZIP</span><input type="text" id="av-zip" maxlength="10" inputmode="numeric"></label>
     </div>
-    <div class="av-row">
-      <label class="f"><span>Phone number <span class="req">*</span></span><input type="tel" id="av-phone" maxlength="20" placeholder="(555) 555-1234" required></label>
-      <label class="f"><span>Website <span class="req">*</span></span><input type="url" id="av-website" maxlength="200" placeholder="https://example.com" required></label>
-    </div>
-    <label class="f"><span>Hours</span><input type="text" id="av-hours" maxlength="160" placeholder="Mon–Fri 7 a.m. – 6 p.m.; 24/7 road service"></label>
+    <label class="f"><span>Phone number <span class="req">*</span></span><input type="tel" id="av-phone" maxlength="20" placeholder="(555) 555-1234" required></label>
     <label class="f"><span>Notes</span><textarea id="av-notes" rows="2" maxlength="600"></textarea></label>
     <div class="av-msg" id="av-msg" role="alert"></div>
     <div class="av-btns">
@@ -1266,11 +1262,11 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   avForm.addEventListener("input", () => { avMsg.textContent = ""; });
   avForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const v = Object.fromEntries(["name", "section", "address", "city", "state", "zip", "phone", "website", "hours", "notes"].map((k) => [k, avVal(k)]));
+    const v = Object.fromEntries(["name", "section", "address", "city", "state", "zip", "phone", "notes"].map((k) => [k, avVal(k)]));
     v.state = v.state.toUpperCase();
     const digits = v.phone.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
     const missing = [!v.name && "business name", !v.section && "section", !v.address && "street address", !v.city && "city",
-      !/^[A-Z]{2}$/.test(v.state) && "2-letter state", digits.length !== 10 && "10-digit phone number", !v.website && "website"].filter(Boolean);
+      !/^[A-Z]{2}$/.test(v.state) && "2-letter state", digits.length !== 10 && "10-digit phone number"].filter(Boolean);
     if (missing.length) { avMsg.textContent = "Still needed: " + missing.join(", ") + "."; return; }
     v.services = [...av.querySelectorAll("fieldset input:checked")].map((x) => x.value).join(", ");
     const q = new URLSearchParams({ template: "add-vendor.yml", title: "Add vendor: " + v.name });
@@ -1486,7 +1482,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       <h4>${esc(s.name)}</h4>
       <div class="t">${esc((s.services || []).join(" · ") || "Added by request")}</div>
       <div class="note">Added by request. Phone number checked on the company's own website ${esc(verified)}.</div>
-      ${hoursBlock(s.hours ? [["Hours", s.hours]] : [], s.hours ? `<div class="sub">Hours as given in the request. Call to confirm.</div>` : "")}
+      ${hoursBlock(s.hours ? [["Hours", s.hours]] : [], s.hours ? `<div class="sub">Hours from the company's website, checked ${esc(verified)}. Call to confirm.</div>` : "")}
       ${addrRow(s)}
       ${phoneRow("", s.phone)}
       ${linkRow(s.verifiedUrl || s.website, "Company website")}

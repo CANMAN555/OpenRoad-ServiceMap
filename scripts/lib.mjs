@@ -149,7 +149,7 @@ async function getPage(url) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
   try {
     const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { "User-Agent": UA, Accept: "text/html,*/*" } });
-    return r.ok ? { url: r.url, html: await r.text() } : null;
+    return r.ok ? { url: r.url || url, html: await r.text() } : null;
   } catch { return null; } finally { clearTimeout(t); }
 }
 // "(864) 419-1067" matches 864-419-1067, 864.419.1067, 8644191067, +1 864 419 1067 and tel: links.
