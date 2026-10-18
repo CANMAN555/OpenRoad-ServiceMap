@@ -161,12 +161,14 @@ const pageText = (html) => html.replace(/<(script|style|noscript)[\s\S]*?<\/\1>/
 // Semi-truck shops only (Manny, 2026-10-18): a shop that also works on cars or pickups is left out of Other Vendors.
 // The name may not say auto/car, and the shop's own website must talk about semis or heavy trucks and not about cars.
 const CAR_NAME = /\b(auto|autos|automotive|car|cars|collision|4x4|off-?road|performance|auto ?body|body ?works|lube & oil)\b/i;
-const CAR_SITE = /\b(cars?(?! ?haul)|suvs?|minivans?|sedans?|passenger (?:cars?|vehicles?)|auto repair|automotive (?:repair|service)|foreign (?:and|&) domestic|domestic (?:and|&) (?:foreign|import)|pickup trucks?|duramax|power ?stroke|lift kits?|jeeps?|motorcycles?|f-?250|f-?350)\b/;
-const SEMI_SITE = /\b(semis?|semi-?trucks?|tractor[- ](?:trailers?|trucks?)|class 8|18[- ]wheelers?|big rigs?|over[- ]the[- ]road|otr|peterbilt|kenworth|freightliner|mack|western star|international trucks?|navistar|commercial (?:trucks?|vehicles?)|heavy[- ]duty (?:trucks?|vehicles?|diesel|repair)|heavy trucks?|fleets?|dot inspections?|reefers?|trailer repair|truck (?:and|&) trailer)\b/;
+const CAR_SITE = /\b(cars(?! ?haul)|car (?:repair|service)|your car|suvs?|minivans?|sedans?|passenger (?:cars?|vehicles?)|auto repair|automotive (?:repair|service)|foreign (?:and|&) domestic|domestic (?:and|&) (?:foreign|import)|pickup trucks?|duramax|power ?stroke|lift kits?|jeeps?|motorcycles?|f-?250|f-?350)\b/;
+const SEMI_SITE = /\b(semis?|semi-?trucks?|tractor[- ](?:trailers?|trucks?)|class 8|18[- ]wheelers?|big rigs?|over[- ]the[- ]road|otr|peterbilt|kenworth|freightliner|mack|western star|international trucks?|navistar|commercial (?:trucks?|vehicles?)|heavy[- ]duty (?:trucks?|vehicles?|diesel|repair)|heavy trucks?|fleets?|dot inspections?|reefers?|trailer repair|trucks? ?(?:and|&|\/) ?trailers?)\b/;
 export function semiOnly(name, text) {
   const n = CAR_NAME.exec(name || "");
   if (n) return `name says "${n[0]}"`;
-  const c = CAR_SITE.exec(text || "");
+  // "We do not work on cars" or "No cars, no pickups" says the opposite, so sentences with a "no" are skipped.
+  const said = String(text || "").split(/[.!?;:]\s/).filter((x) => !/\b(no|not|never|don't|won't|doesn't|except)\b/.test(x)).join(". ");
+  const c = CAR_SITE.exec(said);
   if (c) return `website mentions "${c[0]}"`;
   if (!SEMI_SITE.test(text || "")) return "website does not mention semis or heavy trucks";
   return null;

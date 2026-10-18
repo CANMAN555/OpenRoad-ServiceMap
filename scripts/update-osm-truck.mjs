@@ -115,4 +115,4 @@ for (const s of all) delete s.siteText;
 
 const meta = { source: "OpenStreetMap contributors (ODbL), openstreetmap.org/copyright", fetched_at: new Date().toISOString() };
 await writeData("towing", { ...meta, count: out.tow.length, stores: out.tow }, 5);
-await writeData("truckshops", { ...meta, count: out.shop.length, stores: out.shop }, 50);
+await writeData("truckshops", { ...meta, count: out.shop.length, stores: out.shop }, 15);
