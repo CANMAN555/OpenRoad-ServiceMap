@@ -154,8 +154,26 @@ async function getPage(url) {
 }
 // "(864) 419-1067" matches 864-419-1067, 864.419.1067, 8644191067, +1 864 419 1067 and tel: links.
 const phoneIn = (html, d) => new RegExp(`\\(?${d.slice(0, 3)}\\)?[\\s.\\-\\u00a0]*${d.slice(3, 6)}[\\s.\\-\\u00a0]*${d.slice(6)}(?!\\d)`).test(html);
+// Lowercase words a visitor reads on a page, plus its title and description.
+const pageText = (html) => html.replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, " ").replace(/<meta[^>]+content="([^"]*)"[^>]*>/gi, " $1 ")
+  .replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").toLowerCase();
+
+// Semi-truck shops only (Manny, 2026-10-18): a shop that also works on cars or pickups is left out of Other Vendors.
+// The name may not say auto/car, and the shop's own website must talk about semis or heavy trucks and not about cars.
+const CAR_NAME = /\b(auto|autos|automotive|car|cars|collision|4x4|off-?road|performance|auto ?body|body ?works|lube & oil)\b/i;
+const CAR_SITE = /\b(cars?(?! ?haul)|suvs?|minivans?|sedans?|passenger (?:cars?|vehicles?)|auto repair|automotive (?:repair|service)|foreign (?:and|&) domestic|domestic (?:and|&) (?:foreign|import)|pickup trucks?|duramax|power ?stroke|lift kits?|jeeps?|motorcycles?|f-?250|f-?350)\b/;
+const SEMI_SITE = /\b(semis?|semi-?trucks?|tractor[- ](?:trailers?|trucks?)|class 8|18[- ]wheelers?|big rigs?|over[- ]the[- ]road|otr|peterbilt|kenworth|freightliner|mack|western star|international trucks?|navistar|commercial (?:trucks?|vehicles?)|heavy[- ]duty (?:trucks?|vehicles?|diesel|repair)|heavy trucks?|fleets?|dot inspections?|reefers?|trailer repair|truck (?:and|&) trailer)\b/;
+export function semiOnly(name, text) {
+  const n = CAR_NAME.exec(name || "");
+  if (n) return `name says "${n[0]}"`;
+  const c = CAR_SITE.exec(text || "");
+  if (c) return `website mentions "${c[0]}"`;
+  if (!SEMI_SITE.test(text || "")) return "website does not mention semis or heavy trucks";
+  return null;
+}
+
 // Is this business current? Its own website, fetched now, must show the same phone number.
-// Returns { url } of the page that shows it, or the reason it could not be confirmed.
+// Returns { url, text } (the page that shows it, and the homepage's readable text), or the reason it could not be confirmed.
 export async function checkSite(website, phone) {
   if (!website) return "no website";
   let site = website;
@@ -165,14 +183,15 @@ export async function checkSite(website, phone) {
   // Some small-business sites only answer on http:// or without "www.".
   const home = (await getPage(site)) || (await getPage(site.replace(/^https:/i, "http:"))) || (await getPage(site.replace(/\/\/www\./i, "//")));
   if (!home) return "site down";
-  if (phoneIn(home.html, d)) return { url: home.url };
+  const text = pageText(home.html);
+  if (phoneIn(home.html, d)) return { url: home.url, text };
   // Many sites keep the number on a contact page.
   const base = new URL(home.url);
   const links = [...home.html.matchAll(/href="([^"#]*(?:contact|location|about)[^"#]*)"/gi)].map((m) => { try { return new URL(m[1], base).href; } catch { return null; } })
     .filter((u) => u && new URL(u).host === base.host);
   for (const u of [...new Set(links)].slice(0, 3)) {
     const pg = await getPage(u);
-    if (pg && phoneIn(pg.html, d)) return { url: pg.url };
+    if (pg && phoneIn(pg.html, d)) return { url: pg.url, text: text + " " + pageText(pg.html) };
   }
   return "phone not on site";
 }

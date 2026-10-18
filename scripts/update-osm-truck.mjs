@@ -7,7 +7,7 @@
 // Finally each place must still be current: its own website, fetched today, has to show the same phone number.
 // Places with no website, a dead site, or a site that lists a different number are left out.
 import { readFile } from "node:fs/promises";
-import { checkSite, clean, formatPhone, formatZip, liveMatcher, pool, writeData } from "./lib.mjs";
+import { checkSite, clean, formatPhone, formatZip, liveMatcher, pool, semiOnly, writeData } from "./lib.mjs";
 
 const Q = `[out:json][timeout:900];
 area["ISO3166-1"="US"][admin_level=2]->.us;
@@ -103,10 +103,15 @@ const why = {}, today = new Date().toISOString().slice(0, 10);
 await pool(all, 8, async (s) => {
   const r = await checkSite(s.website, s.phone);
   if (typeof r === "string") { why[r] = (why[r] || 0) + 1; s.unverified = true; }
-  else { s.verified = today; s.verifiedUrl = r.url; why.verified = (why.verified || 0) + 1; }
+  else { s.verified = today; s.verifiedUrl = r.url; why.verified = (why.verified || 0) + 1; s.siteText = r.text; }
 });
 console.log(`Website check of ${all.length} places:`, JSON.stringify(why));
 for (const k of ["tow", "shop"]) out[k] = out[k].filter((s) => !s.unverified);
+// Other Vendors keeps semi-truck shops only; towing companies are not filtered this way.
+const notSemi = [];
+out.shop = out.shop.filter((s) => { const r = semiOnly(s.name, s.siteText); if (r) notSemi.push(`${s.name} (${s.city}, ${s.state}): ${r}`); return !r; });
+console.log(`Left out ${notSemi.length} shops that also work on cars or don't say they work on semis:\n  ` + notSemi.join("\n  "));
+for (const s of all) delete s.siteText;
 
 const meta = { source: "OpenStreetMap contributors (ODbL), openstreetmap.org/copyright", fetched_at: new Date().toISOString() };
 await writeData("towing", { ...meta, count: out.tow.length, stores: out.tow }, 5);
