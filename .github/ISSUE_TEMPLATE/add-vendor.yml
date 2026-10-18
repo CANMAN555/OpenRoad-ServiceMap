@@ -19,7 +19,6 @@ body:
     attributes:
       label: Section
       options:
-        - Repair shops & fuel
         - Towing
         - Other Vendors
     validations:

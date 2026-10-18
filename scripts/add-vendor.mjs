@@ -36,7 +36,8 @@ for (const part of String(issue.body || "").split(/^### /m).slice(1)) {
   fields[label] = value === "_No response_" ? "" : value;
 }
 const f = (label) => clean(fields[label]) || "";
-const SECTIONS = { "Repair shops & fuel": "shops", Towing: "towing", "Other Vendors": "other" };
+// Requested vendors join the Towing or Other Vendors section; an older "Repair shops & fuel" pick goes to Other Vendors.
+const SECTIONS = { "Repair shops & fuel": "other", Towing: "towing", "Other Vendors": "other" };
 const req = {
   name: f("Business name"),
   section: SECTIONS[f("Section")] || "",
@@ -51,7 +52,7 @@ const req = {
 const lines = [], problems = [];
 const say = (ok, text) => lines.push(`${ok ? "✅" : "❌"} ${text}`);
 if (!req.name) problems.push("The business name is missing.");
-if (!req.section) problems.push("Pick a section: Repair shops & fuel, Towing or Other Vendors.");
+if (!req.section) problems.push("Pick a section: Towing or Other Vendors.");
 if (!req.address || !req.city || !/^[A-Z]{2}$/.test(req.state)) problems.push("The street address, city and 2-letter state are all needed.");
 if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(req.phone || "")) problems.push("The phone number must be a 10-digit U.S. number.");
 
@@ -114,7 +115,7 @@ if (!problems.length && researched) {
   }
 } else if (!problems.length) setLabels = ["needs-research"];
 
-const label = { shops: "Repair shops & fuel", towing: "Towing", other: "Other Vendors" }[req.section] || "?";
+const label = { towing: "Towing", other: "Other Vendors" }[req.section] || "?";
 const text = [
   `**${req.name || "Vendor"}** → ${label}`, "",
   ...lines, "",
