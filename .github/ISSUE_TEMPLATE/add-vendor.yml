@@ -1,0 +1,80 @@
+name: Add a vendor
+description: Ask for a vendor to be added to the map. It is checked online before a pin goes up.
+title: "Add vendor: "
+labels: ["add-vendor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The vendor's own website must show the phone number below, and the street address must be found on the map.
+        If both check out, the pin is added automatically. You get a comment here either way.
+  - type: input
+    id: name
+    attributes:
+      label: Business name
+    validations:
+      required: true
+  - type: dropdown
+    id: section
+    attributes:
+      label: Section
+      options:
+        - Repair shops & fuel
+        - Towing
+        - Other Vendors
+    validations:
+      required: true
+  - type: input
+    id: services
+    attributes:
+      label: Services
+      description: Separate with commas.
+      placeholder: Truck repair, Mobile repair, Tires, Towing, Trailer repair, Reefer / APU
+  - type: input
+    id: address
+    attributes:
+      label: Street address
+      placeholder: 1234 Main St
+    validations:
+      required: true
+  - type: input
+    id: city
+    attributes:
+      label: City
+    validations:
+      required: true
+  - type: input
+    id: state
+    attributes:
+      label: State (2 letters)
+      placeholder: TX
+    validations:
+      required: true
+  - type: input
+    id: zip
+    attributes:
+      label: ZIP code
+  - type: input
+    id: phone
+    attributes:
+      label: Phone number
+      placeholder: (555) 555-1234
+    validations:
+      required: true
+  - type: input
+    id: website
+    attributes:
+      label: Website
+      description: The vendor's own website. It must show the same phone number.
+      placeholder: https://example.com
+    validations:
+      required: true
+  - type: input
+    id: hours
+    attributes:
+      label: Hours
+      placeholder: Mon–Fri 7 a.m. – 6 p.m.; Sat 8 a.m. – 12 p.m.; 24/7 road service
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes

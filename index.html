@@ -717,6 +717,7 @@
   --stm: #121212;           /* Southern Tire Mart pins (black, red letters) */
   --towing: #D81B60;        /* Towing company pins (deep pink) */
   --truckshops: #6D4C41;    /* Independent truck repair and tire shop pins (brown) */
+  --added: #00897B;         /* Vendors added through the "Add a vendor" form (teal) */
   --mack: #B0BEC5;          /* Mack Trucks dealer pins (silver, navy letters) */
   --rush: #7CB342;          /* Rush Truck Centers pins (green, navy letters) */
   --pomps: #10312B;         /* Pomp's Tire pins (Pomp's dark green) */
@@ -779,6 +780,25 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-body); f
   color: var(--orange); border: 1px solid currentColor; text-shadow: 0 0 6px rgba(255,107,0,.55); }
 .topnav button[aria-pressed="true"] .beta { color: var(--navy); text-shadow: none; }
 .topnav button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.topnav .tn-add { justify-self: end; border-color: var(--orange); color: var(--orange); }
+.topnav .tn-add:hover { background: var(--orange); color: var(--navy); }
+/* "Add a vendor" form: the request goes to GitHub, where it is checked online before a pin goes up. */
+#av { border: 0; border-radius: 10px; padding: 0; width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 32px); color: var(--fg); background: var(--panel); box-shadow: 0 18px 50px rgba(0,0,0,.45); }
+#av::backdrop { background: rgba(11,31,51,.6); }
+#av form { padding: 18px 18px 16px; display: grid; gap: 10px; }
+#av h2 { margin: 0; font: 800 1.2rem var(--font-body); }
+#av p { margin: 0; font-size: .88rem; color: var(--muted); }
+#av .av-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#av .av-row.three { grid-template-columns: 2fr 1fr 1fr; }
+#av label.f { display: grid; gap: 4px; font: 700 .82rem var(--font-body); }
+#av label.f .req { color: var(--orange); }
+#av input[type="text"], #av input[type="url"], #av input[type="tel"], #av select, #av textarea { font: 400 .95rem var(--font-body); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; width: 100%; min-width: 0; }
+#av fieldset { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+#av legend { font: 700 .82rem var(--font-body); padding: 0 4px; }
+#av fieldset label { font-size: .88rem; display: inline-flex; align-items: center; gap: 5px; }
+#av .av-btns { display: flex; justify-content: flex-end; gap: 8px; }
+#av .av-msg { color: #E53935; font-weight: 700; min-height: 1em; }
+@media (max-width: 520px) { #av .av-row, #av .av-row.three { grid-template-columns: 1fr; } }
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 a { color: var(--accent); }
@@ -962,6 +982,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   .side-toggle { display: none; }
   .topnav { grid-template-columns: auto 1fr; }
   .topnav .ws { justify-content: flex-end; }
+  .topnav .tn-add { grid-column: 1 / -1; }
   .topnav button { padding: 7px 10px; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
@@ -982,7 +1003,48 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     <!-- Post Board: fleet repair postings over the same map, behind a 4-digit PIN. -->
     <button type="button" id="ws-board" aria-pressed="false">Post Board <span class="beta">Beta</span></button>
   </div>
+  <button type="button" class="tn-add" id="av-open" aria-haspopup="dialog">+ Add a vendor</button>
 </nav>
+<dialog id="av" aria-labelledby="av-title">
+  <form id="av-form" method="dialog" autocomplete="off" novalidate>
+    <h2 id="av-title">Add a vendor</h2>
+    <p>Fill this in and press Send request. It opens a request on GitHub (a free GitHub sign-in is needed). The vendor's own website is then checked for the same phone number and the address is looked up. If both check out, the new pin goes on the map.</p>
+    <label class="f"><span>Business name <span class="req">*</span></span><input type="text" id="av-name" maxlength="100" required></label>
+    <label class="f"><span>Section <span class="req">*</span></span>
+      <select id="av-section" required>
+        <option value="">Pick a section</option>
+        <option>Repair shops &amp; fuel</option>
+        <option>Towing</option>
+        <option>Other Vendors</option>
+      </select>
+    </label>
+    <fieldset><legend>Services</legend>
+      <label><input type="checkbox" value="Truck repair">Truck repair</label>
+      <label><input type="checkbox" value="Mobile repair">Mobile repair</label>
+      <label><input type="checkbox" value="Tires">Tires</label>
+      <label><input type="checkbox" value="Towing">Towing</label>
+      <label><input type="checkbox" value="Trailer repair">Trailer repair</label>
+      <label><input type="checkbox" value="Reefer / APU">Reefer / APU</label>
+    </fieldset>
+    <label class="f"><span>Street address <span class="req">*</span></span><input type="text" id="av-address" maxlength="120" placeholder="1234 Main St" required></label>
+    <div class="av-row three">
+      <label class="f"><span>City <span class="req">*</span></span><input type="text" id="av-city" maxlength="60" required></label>
+      <label class="f"><span>State <span class="req">*</span></span><input type="text" id="av-state" maxlength="2" placeholder="TX" required></label>
+      <label class="f"><span>ZIP</span><input type="text" id="av-zip" maxlength="10" inputmode="numeric"></label>
+    </div>
+    <div class="av-row">
+      <label class="f"><span>Phone number <span class="req">*</span></span><input type="tel" id="av-phone" maxlength="20" placeholder="(555) 555-1234" required></label>
+      <label class="f"><span>Website <span class="req">*</span></span><input type="url" id="av-website" maxlength="200" placeholder="https://example.com" required></label>
+    </div>
+    <label class="f"><span>Hours</span><input type="text" id="av-hours" maxlength="160" placeholder="Mon–Fri 7 a.m. – 6 p.m.; 24/7 road service"></label>
+    <label class="f"><span>Notes</span><textarea id="av-notes" rows="2" maxlength="600"></textarea></label>
+    <div class="av-msg" id="av-msg" role="alert"></div>
+    <div class="av-btns">
+      <button type="button" class="btn" id="av-cancel">Cancel</button>
+      <button type="submit" class="btn primary" id="av-send">Send request</button>
+    </div>
+  </form>
+</dialog>
 <div class="app">
   <aside class="panel" id="side-panel">
     <header class="sign">
@@ -1195,6 +1257,27 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   wsMap.addEventListener("click", () => setWorkspace(false));
   wsBoard.addEventListener("click", () => setWorkspace(true));
   if (location.hash === "#post-board") addEventListener("load", () => setWorkspace(true));
+  // "Add a vendor": the form opens a GitHub request with every field filled in. The repo's add-vendor workflow
+  // checks it online (phone on the vendor's own website, address found) and adds the pin to data/added.json.
+  const av = $("av"), avForm = $("av-form"), avMsg = $("av-msg");
+  const avVal = (id) => $("av-" + id).value.trim();
+  $("av-open").addEventListener("click", () => { avMsg.textContent = ""; av.showModal(); $("av-name").focus(); });
+  $("av-cancel").addEventListener("click", () => av.close());
+  avForm.addEventListener("input", () => { avMsg.textContent = ""; });
+  avForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = Object.fromEntries(["name", "section", "address", "city", "state", "zip", "phone", "website", "hours", "notes"].map((k) => [k, avVal(k)]));
+    v.state = v.state.toUpperCase();
+    const digits = v.phone.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+    const missing = [!v.name && "business name", !v.section && "section", !v.address && "street address", !v.city && "city",
+      !/^[A-Z]{2}$/.test(v.state) && "2-letter state", digits.length !== 10 && "10-digit phone number", !v.website && "website"].filter(Boolean);
+    if (missing.length) { avMsg.textContent = "Still needed: " + missing.join(", ") + "."; return; }
+    v.services = [...av.querySelectorAll("fieldset input:checked")].map((x) => x.value).join(", ");
+    const q = new URLSearchParams({ template: "add-vendor.yml", title: "Add vendor: " + v.name });
+    for (const [k, x] of Object.entries(v)) if (x) q.set(k, x);
+    window.open("https://github.com/CANMAN555/OpenRoad-ServiceMap/issues/new?" + q, "_blank", "noopener");
+    av.close(); avForm.reset();
+  });
   // Basemap: Esri World Imagery satellite with road and place labels on top.
   const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
   L.layerGroup([
@@ -1393,6 +1476,21 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       ${linkRow(s.verifiedUrl || s.website, "Company website")}
       ${linkRow(s.osm, "Listing on OpenStreetMap")}
       ${srcRow("OpenStreetMap contributors", checked)}
+    </div>`;
+  }
+
+  // Vendors added through the "Add a vendor" form (data/added.json, written by scripts/add-vendor.mjs).
+  function addedPopup(s, checked) {
+    const verified = new Date(s.verified + "T12:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+    return `<div class="lv">
+      <h4>${esc(s.name)}</h4>
+      <div class="t">${esc((s.services || []).join(" · ") || "Added by request")}</div>
+      <div class="note">Added by request. Phone number checked on the company's own website ${esc(verified)}.</div>
+      ${hoursBlock(s.hours ? [["Hours", s.hours]] : [], s.hours ? `<div class="sub">Hours as given in the request. Call to confirm.</div>` : "")}
+      ${addrRow(s)}
+      ${phoneRow("", s.phone)}
+      ${linkRow(s.verifiedUrl || s.website, "Company website")}
+      ${linkRow(s.request, "The request on GitHub")}
     </div>`;
   }
 
@@ -1658,6 +1756,9 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     { key: "truckshops", section: "other", label: "Truck repair & tire shops", letter: "R", color: "--truckshops", text: "#fff", popup: osmPopup, z: -700,
       // M = mobile repair, T = tire shop, R = repair shop.
       pinLetter: (s) => (s.services.includes("Mobile repair") ? "M" : s.services.includes("Tires") && !s.services.includes("Repair") ? "T" : "R") },
+    // Vendors added with the "Add a vendor" button: one file, shown in the section picked on the form.
+    ...[["shops", -800], ["towing", -810], ["other", -820]].map(([sec, z]) => ({ key: "added-" + sec, file: "added", section: sec === "shops" ? undefined : sec,
+      label: "Added by request", letter: "+", color: "--added", text: "#fff", popup: addedPopup, z, only: (s) => s.section === sec })),
   ];
   // Filter sections, in the order they show under the search box and in the map's company box.
   // A company joins one with section: "towing" or "other"; without one it is a repair shop or fuel stop.

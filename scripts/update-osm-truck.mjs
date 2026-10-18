@@ -7,7 +7,7 @@
 // Finally each place must still be current: its own website, fetched today, has to show the same phone number.
 // Places with no website, a dead site, or a site that lists a different number are left out.
 import { readFile } from "node:fs/promises";
-import { UA as SITE_UA, clean, formatPhone, formatZip, liveMatcher, pool, writeData } from "./lib.mjs";
+import { checkSite, clean, formatPhone, formatZip, liveMatcher, pool, writeData } from "./lib.mjs";
 
 const Q = `[out:json][timeout:900];
 area["ISO3166-1"="US"][admin_level=2]->.us;
@@ -98,38 +98,10 @@ for (const e of ranked) {
 console.log("Dropped:", JSON.stringify(dropped));
 
 // ---------- check each place against its own website ----------
-async function get(url) {
-  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
-  try {
-    const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { "User-Agent": SITE_UA, Accept: "text/html,*/*" } });
-    return r.ok ? { url: r.url, html: await r.text() } : null;
-  } catch { return null; } finally { clearTimeout(t); }
-}
-// "(864) 419-1067" matches 864-419-1067, 864.419.1067, 8644191067, +1 864 419 1067 and tel: links.
-const phoneIn = (html, d) => new RegExp(`\\(?${d.slice(0, 3)}\\)?[\\s.\\-\\u00a0]*${d.slice(3, 6)}[\\s.\\-\\u00a0]*${d.slice(6)}(?!\\d)`).test(html);
-async function verify(s) {
-  if (!s.website) return "no website";
-  let site = s.website;
-  if (!/^https?:\/\//i.test(site)) site = "https://" + site;
-  const d = s.phone.replace(/\D/g, "");
-  // Some small-business sites only answer on http:// or without "www.".
-  const home = (await get(site)) || (await get(site.replace(/^https:/i, "http:"))) || (await get(site.replace(/\/\/www\./i, "//")));
-  if (!home) return "site down";
-  if (phoneIn(home.html, d)) return { url: home.url };
-  // Many sites keep the number on a contact page.
-  const base = new URL(home.url);
-  const links = [...home.html.matchAll(/href="([^"#]*(?:contact|location|about)[^"#]*)"/gi)].map((m) => { try { return new URL(m[1], base).href; } catch { return null; } })
-    .filter((u) => u && new URL(u).host === base.host);
-  for (const u of [...new Set(links)].slice(0, 3)) {
-    const pg = await get(u);
-    if (pg && phoneIn(pg.html, d)) return { url: pg.url };
-  }
-  return "phone not on site";
-}
 const all = [...new Map([...out.tow, ...out.shop].map((s) => [s.id, s])).values()];
 const why = {}, today = new Date().toISOString().slice(0, 10);
 await pool(all, 8, async (s) => {
-  const r = await verify(s);
+  const r = await checkSite(s.website, s.phone);
   if (typeof r === "string") { why[r] = (why[r] || 0) + 1; s.unverified = true; }
   else { s.verified = today; s.verifiedUrl = r.url; why.verified = (why.verified || 0) + 1; }
 });

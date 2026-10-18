@@ -144,3 +144,35 @@ export async function liveMatcher(extra = []) {
       (within(s.lat, s.lon, a, b, 0.0015) && w.some((x) => names.has(x))) || (phones.has(ph) && within(s.lat, s.lon, a, b, 0.015)));
   };
 }
+
+async function getPage(url) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { "User-Agent": UA, Accept: "text/html,*/*" } });
+    return r.ok ? { url: r.url, html: await r.text() } : null;
+  } catch { return null; } finally { clearTimeout(t); }
+}
+// "(864) 419-1067" matches 864-419-1067, 864.419.1067, 8644191067, +1 864 419 1067 and tel: links.
+const phoneIn = (html, d) => new RegExp(`\\(?${d.slice(0, 3)}\\)?[\\s.\\-\\u00a0]*${d.slice(3, 6)}[\\s.\\-\\u00a0]*${d.slice(6)}(?!\\d)`).test(html);
+// Is this business current? Its own website, fetched now, must show the same phone number.
+// Returns { url } of the page that shows it, or the reason it could not be confirmed.
+export async function checkSite(website, phone) {
+  if (!website) return "no website";
+  let site = website;
+  if (!/^https?:\/\//i.test(site)) site = "https://" + site;
+  const d = String(phone || "").replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
+  if (d.length !== 10) return "phone is not a 10-digit number";
+  // Some small-business sites only answer on http:// or without "www.".
+  const home = (await getPage(site)) || (await getPage(site.replace(/^https:/i, "http:"))) || (await getPage(site.replace(/\/\/www\./i, "//")));
+  if (!home) return "site down";
+  if (phoneIn(home.html, d)) return { url: home.url };
+  // Many sites keep the number on a contact page.
+  const base = new URL(home.url);
+  const links = [...home.html.matchAll(/href="([^"#]*(?:contact|location|about)[^"#]*)"/gi)].map((m) => { try { return new URL(m[1], base).href; } catch { return null; } })
+    .filter((u) => u && new URL(u).host === base.host);
+  for (const u of [...new Set(links)].slice(0, 3)) {
+    const pg = await getPage(u);
+    if (pg && phoneIn(pg.html, d)) return { url: pg.url };
+  }
+  return "phone not on site";
+}
