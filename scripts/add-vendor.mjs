@@ -25,7 +25,9 @@ if (process.env.GITHUB_TOKEN && process.env.GITHUB_REPOSITORY) {
 if (issue.state !== "open") { console.log("Request already closed."); await out(false); process.exit(0); }
 const labels = new Set(issue.labels.map((l) => l.name));
 const owner = (process.env.REPO_OWNER || "").toLowerCase();
-const approved = issue.user.login.toLowerCase() === owner || labels.has("approved");
+// Requests sent from the map's form (no GitHub account) are opened by Claude under the owner's account and carry the
+// "from-website" label, so they still wait for the owner's "approved" label.
+const approved = labels.has("approved") || (issue.user.login.toLowerCase() === owner && !labels.has("from-website"));
 const researched = labels.has("checked-by-claude");
 
 // Issue forms come back as "### Label\n\nvalue" blocks; "_No response_" means the field was left empty.

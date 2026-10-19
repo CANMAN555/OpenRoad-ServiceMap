@@ -797,6 +797,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-body); f
 #av fieldset label { font-size: .88rem; display: inline-flex; align-items: center; gap: 5px; }
 #av .av-btns { display: flex; justify-content: flex-end; gap: 8px; }
 #av .av-msg { color: #E53935; font-weight: 700; min-height: 1em; }
+#av .av-msg.ok { color: #2E7D32; }
 @media (max-width: 520px) { #av .av-row, #av .av-row.three { grid-template-columns: 1fr; } }
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -1007,7 +1008,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
 <dialog id="av" aria-labelledby="av-title">
   <form id="av-form" method="dialog" autocomplete="off" novalidate>
     <h2 id="av-title">Add a vendor</h2>
-    <p>Fill this in and press Send request. It opens a request on GitHub (a free GitHub sign-in is needed). Claude then checks that the business is real: it finds the vendor's own website, makes sure the same phone number is on it, looks up the address and adds the store hours. If everything checks out, the new pin goes on the map.</p>
+    <p>Fill this in and press Send request. No sign-in is needed. Claude then checks that the business is real: it finds the vendor's own website, makes sure the same phone number is on it, looks up the address and adds the store hours. The map owner approves it, and the new pin goes on the map.</p>
     <label class="f"><span>Business name <span class="req">*</span></span><input type="text" id="av-name" maxlength="100" required></label>
     <label class="f"><span>Section <span class="req">*</span></span>
       <select id="av-section" required>
@@ -1031,7 +1032,9 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       <label class="f"><span>ZIP</span><input type="text" id="av-zip" maxlength="10" inputmode="numeric"></label>
     </div>
     <label class="f"><span>Phone number <span class="req">*</span></span><input type="tel" id="av-phone" maxlength="20" placeholder="(555) 555-1234" required></label>
-    <label class="f"><span>Notes</span><textarea id="av-notes" rows="2" maxlength="600"></textarea></label>
+    <label class="f"><span>Notes about the vendor</span><textarea id="av-notes" rows="2" maxlength="600" placeholder="Please don't put your own name or phone number here."></textarea></label>
+    <!-- Left empty by people; bots that fill every box are turned away. -->
+    <input type="text" id="av-web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px">
     <div class="av-msg" id="av-msg" role="alert"></div>
     <div class="av-btns">
       <button type="button" class="btn" id="av-cancel">Cancel</button>
@@ -1255,10 +1258,10 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   // checks it online (phone on the vendor's own website, address found) and adds the pin to data/added.json.
   const av = $("av"), avForm = $("av-form"), avMsg = $("av-msg");
   const avVal = (id) => $("av-" + id).value.trim();
-  $("av-open").addEventListener("click", () => { avMsg.textContent = ""; av.showModal(); $("av-name").focus(); });
+  $("av-open").addEventListener("click", () => { avMsg.textContent = ""; avMsg.className = "av-msg"; av.showModal(); $("av-name").focus(); });
   $("av-cancel").addEventListener("click", () => av.close());
-  avForm.addEventListener("input", () => { avMsg.textContent = ""; });
-  avForm.addEventListener("submit", (e) => {
+  avForm.addEventListener("input", () => { avMsg.textContent = ""; avMsg.className = "av-msg"; });
+  avForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const v = Object.fromEntries(["name", "section", "address", "city", "state", "zip", "phone", "notes"].map((k) => [k, avVal(k)]));
     v.state = v.state.toUpperCase();
@@ -1267,10 +1270,31 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       !/^[A-Z]{2}$/.test(v.state) && "2-letter state", digits.length !== 10 && "10-digit phone number"].filter(Boolean);
     if (missing.length) { avMsg.textContent = "Still needed: " + missing.join(", ") + "."; return; }
     v.services = [...av.querySelectorAll("fieldset input:checked")].map((x) => x.value).join(", ");
-    const q = new URLSearchParams({ template: "add-vendor.yml", title: "Add vendor: " + v.name });
-    for (const [k, x] of Object.entries(v)) if (x) q.set(k, x);
-    window.open("https://github.com/CANMAN555/OpenRoad-ServiceMap/issues/new?" + q, "_blank", "noopener");
-    av.close(); avForm.reset();
+    if ($("av-web").value) { av.close(); avForm.reset(); return; }
+    avMsg.className = "av-msg"; avMsg.textContent = "Sending…"; $("av-send").disabled = true;
+    try {
+      // Saved in the site's Supabase database (addvendor/vendor-requests.sql), so no GitHub account is needed.
+      const cfg = window.PB_CONFIG || {};
+      if (!cfg.supabaseUrl) throw new Error("no database");
+      const r = await fetch(cfg.supabaseUrl.replace(/\/$/, "") + "/rest/v1/rpc/vr_submit", {
+        method: "POST",
+        headers: { apikey: cfg.supabaseAnonKey, ...(cfg.supabaseAnonKey.startsWith("eyJ") ? { Authorization: "Bearer " + cfg.supabaseAnonKey } : {}), "Content-Type": "application/json" },
+        body: JSON.stringify(v),
+      });
+      const out = r.ok ? await r.json() : null;
+      if (!out) throw new Error("HTTP " + r.status);
+      if (out.error) { avMsg.textContent = out.error; return; }
+      avForm.reset();
+      avMsg.className = "av-msg ok";
+      avMsg.textContent = "Thanks! Your request was saved. Claude checks new requests once a day before the pin goes up.";
+    } catch (err) {
+      // The database could not be reached: hand the request to GitHub instead, filled in.
+      console.warn("Vendor request database unavailable:", err.message);
+      const q = new URLSearchParams({ template: "add-vendor.yml", title: "Add vendor: " + v.name });
+      for (const [k, x] of Object.entries(v)) if (x) q.set(k, x);
+      window.open("https://github.com/CANMAN555/OpenRoad-ServiceMap/issues/new?" + q, "_blank", "noopener");
+      av.close(); avForm.reset();
+    } finally { $("av-send").disabled = false; }
   });
   // Basemap: Esri World Imagery satellite with road and place labels on top.
   const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";

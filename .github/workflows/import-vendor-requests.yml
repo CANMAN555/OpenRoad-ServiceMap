@@ -1,0 +1,36 @@
+name: Import vendor requests from the website
+
+# Requests sent from the map's "Add a vendor" form are saved in Supabase. Each day, before Claude's look-up
+# (14:47 UTC), they become GitHub requests labeled needs-research and from-website.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 14 * * *"
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: import-vendor-requests
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Make sure the labels exist
+        run: |
+          gh label create add-vendor --color FF6B00 --description "Request to add a vendor to the map" --force || true
+          gh label create from-website --color 6A1B9A --description "Sent from the map's Add a vendor form; the owner approves it" --force || true
+          gh label create needs-research --color FBC02D --description "Waiting for Claude to find the vendor's website and hours" --force || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - run: node scripts/import-vendor-requests.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
