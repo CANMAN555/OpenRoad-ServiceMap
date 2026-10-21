@@ -26,9 +26,11 @@ const STUB = `
       const id = Number(u.searchParams.get("id").slice(3));
       if (u.searchParams.get("status") !== "eq.new") throw new Error("PATCH without status=eq.new");
       s.patches.push(id);
+      if (s.skipBeforePatch.includes(id)) s.rows.find((r) => r.id === id).status = "skipped";
       if (s.failPatch.includes(id)) { s.failPatch = s.failPatch.filter((x) => x !== id); save(s); return new Response("boom", { status: 500 }); }
-      Object.assign(s.rows.find((r) => r.id === id), JSON.parse(init.body)); save(s);
-      return new Response(null, { status: 204 });
+      const hit = s.rows.filter((r) => r.id === id && r.status === "new");
+      hit.forEach((r) => Object.assign(r, JSON.parse(init.body))); save(s);
+      return Response.json(hit.map((r) => ({ id: r.id })));
     }
     if (u.hostname === "api.github.com" && method === "GET") {
       const page = Number(u.searchParams.get("page"));
@@ -48,7 +50,7 @@ async function setup(init) {
   await mkdir(join(dir, "postboard"));
   await writeFile(join(dir, "postboard/config.js"), 'window.PB = { supabaseUrl: "https://db.test", supabaseAnonKey: "sb_publishable_anon" };\n');
   await writeFile(join(dir, "stub.mjs"), STUB);
-  await writeFile(join(dir, "state.json"), JSON.stringify({ cap: 1e9, issues: [], failPatch: [], ...init, dbKeys: [], patches: [], reads: 0, created: 0 }));
+  await writeFile(join(dir, "state.json"), JSON.stringify({ cap: 1e9, issues: [], failPatch: [], skipBeforePatch: [], ...init, dbKeys: [], patches: [], reads: 0, created: 0 }));
   const run = (env = {}) => new Promise((done) => execFile(process.execPath, ["--import", join(dir, "stub.mjs"), script], { cwd: dir,
     env: { PATH: process.env.PATH, STUB_STATE: join(dir, "state.json"), GITHUB_TOKEN: "t", GITHUB_REPOSITORY: "x/y", SUPABASE_SERVICE_KEY: "sb_secret_test", IMPORT_PAGE_SIZE: "5", ...env } },
     (err, stdout) => done({ code: err ? err.code : 0, stdout })));
@@ -119,4 +121,15 @@ test("an issue that someone else wrote, or that only mentions the request, does 
   const s = await t.state();
   assert.equal(s.created, 1);
   assert.equal(s.rows[0].issue_url, "https://github.com/x/y/issues/3");
+});
+
+test("a request set to skipped while the run is going stays skipped and is not counted as sent", async () => {
+  const t = await setup({ rows: [1, 2].map(row), skipBeforePatch: [1] });
+  const r = await t.run();
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /::warning::Website request #1 was no longer "new"/);
+  assert.match(r.stdout, /marked 1 as sent/);
+  const s = await t.state();
+  assert.deepEqual(s.rows.map((x) => x.status), ["skipped", "sent"]);
+  assert.equal(s.rows[0].issue_url, undefined);
 });

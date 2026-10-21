@@ -61,8 +61,10 @@ for (;;) {
       done.set(q.id, link); opened++;
       console.log(`Opened ${link} for website request #${q.id}`);
     }
-    const p = await db(`vr_requests?id=eq.${q.id}&status=eq.new`, { method: "PATCH", body: JSON.stringify({ status: "sent", issue_url: link }), headers: { Prefer: "return=minimal" } });
-    if (p.ok) marked++;
+    // Only a row still "new" is marked; one the owner set to "skipped" in the meantime is left as it is.
+    const p = await db(`vr_requests?id=eq.${q.id}&status=eq.new&select=id`, { method: "PATCH", body: JSON.stringify({ status: "sent", issue_url: link }), headers: { Prefer: "return=representation" } });
+    if (p.ok && (await p.json()).length) marked++;
+    else if (p.ok) console.log(`::warning::Website request #${q.id} was no longer "new" in the database, so it was left as it is (its GitHub request: ${link}).`);
     else { console.log(`::error::Could not mark website request #${q.id} as sent: HTTP ${p.status}`); failed++; }
   }
   last = rows.at(-1).id;
