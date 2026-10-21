@@ -8,6 +8,39 @@ const NAMED = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
 const decode = (s) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
   e[0] === "#" ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : +e.slice(1)) : NAMED[e.toLowerCase()] ?? m);
 export const clean = (s) => (s == null ? null : decode(String(s)).replace(/\s+/g, " ").trim() || null);
+// Vendor requests are GitHub issues made of "### Label\n\nvalue" blocks. These are the issue form's labels, in order
+// (.github/ISSUE_TEMPLATE/add-vendor.yml; tests/parse-blocks.test.mjs keeps the two in step), then the blocks Claude
+// adds after checking the vendor online (older requests have no Sections block).
+export const REQUEST_LABELS = ["Business name", "Services", "Street address", "City", "State (2 letters)", "ZIP code", "Phone number", "Notes"];
+export const RESEARCH_LABELS = ["Website", "Hours", "Hours source", "Sections"];
+// Reads such a body. It counts only when its headings are exactly one of the layouts given, in order, so a field whose
+// text holds a "### " line (which would add or replace a field) makes the request invalid instead of changing it.
+// Returns { fields } or { error }. "_No response_" means the field was left empty.
+export function parseBlocks(body, layouts) {
+  const heads = [], fields = {};
+  let cur = null, buf = [];
+  const flush = () => { if (cur !== null) { const v = buf.join("\n").trim(); fields[cur] = v === "_No response_" ? "" : v; } };
+  String(body || "").replace(/\r\n?/g, "\n").split("\n").forEach((line, i) => {
+    const m = /^### (.*)$/.exec(line);
+    if (!m) return buf.push(line);
+    flush(); cur = m[1].trim(); buf = []; heads.push({ label: cur, line: i + 1 });
+  });
+  flush();
+  if (layouts.some((l) => l.length === heads.length && l.every((x, i) => x === heads[i].label))) return { fields };
+  const longest = layouts.reduce((a, b) => (b.length > a.length ? b : a), []);
+  const bad = heads.find((h, i) => h.label !== longest[i]);
+  return { error: bad
+    ? `The request does not match the form: line ${bad.line} starts with \`### ${bad.label.replace(/`/g, "'").slice(0, 80)}\`. A field may not contain a line that starts with "### ".`
+    : `The request does not match the form: fields are missing after \`${(heads.at(-1)?.label ?? "the start").replace(/`/g, "'").slice(0, 80)}\`.` };
+}
+// One block for a request built outside the issue form. "#" at the start of a line is escaped so typed text can never
+// become a heading, and single-line fields stay on one line.
+export function requestBlock(label, value, { oneLine = false } = {}) {
+  let v = String(value ?? "").trim();
+  if (oneLine) v = v.replace(/\s*\n\s*/g, " ");
+  v = v.replace(/^#/gm, "\\#");
+  return `### ${label}\n\n${v || "_No response_"}\n`;
+}
 // "917523253" -> "91752-3253"; five-digit ZIPs and ZIP+4 with a dash pass through.
 export const formatZip = (z) => { const c = clean(z); return c && /^\d{9}$/.test(c) ? `${c.slice(0, 5)}-${c.slice(5)}` : c; };
 
