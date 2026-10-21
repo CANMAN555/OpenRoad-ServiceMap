@@ -1348,7 +1348,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     const t = String(u || "").trim();
     if (!t) return null;
     const v = /^[a-z][a-z0-9+.-]*:/i.test(t) && !/^[^:/]+\.[a-z]{2,}:\d+/i.test(t) ? t : "https://" + t.replace(/^\/+/, "");
-    try { const x = new URL(v); return /^https?:$/.test(x.protocol) && x.hostname.includes(".") ? x.href : null; } catch { return null; }
+    try { const x = new URL(v); const labels = x.hostname.replace(/\.$/, "").split("."); return /^https?:$/.test(x.protocol) && labels.length > 1 && labels.every(Boolean) ? x.href : null; } catch { return null; }
   };
   const linkRow = (url, text) => { const u = safeUrl(url); return u ? `<div class="row"><a href="${esc(u)}" target="_blank" rel="noopener">${esc(text)}</a></div>` : ""; };
   // Red notice for a Love's or TA that sells fuel but has no truck repair shop and no tire service.
