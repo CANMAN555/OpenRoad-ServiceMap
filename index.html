@@ -1010,14 +1010,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     <h2 id="av-title">Add a vendor</h2>
     <p>Fill this in and press Send request. No sign-in is needed. Claude then checks that the business is real: it finds the vendor's own website, makes sure the same phone number is on it, looks up the address and adds the store hours. The map owner approves it, and the new pin goes on the map.</p>
     <label class="f"><span>Business name <span class="req">*</span></span><input type="text" id="av-name" maxlength="100" required></label>
-    <label class="f"><span>Section <span class="req">*</span></span>
-      <select id="av-section" required>
-        <option value="">Pick a section</option>
-        <option>Towing</option>
-        <option>Other Vendors</option>
-      </select>
-    </label>
-    <fieldset><legend>Services</legend>
+    <fieldset><legend>What the vendor does <span class="req">*</span></legend>
       <label><input type="checkbox" value="Truck repair">Truck repair</label>
       <label><input type="checkbox" value="Mobile repair">Mobile repair</label>
       <label><input type="checkbox" value="Tires">Tires</label>
@@ -1263,13 +1256,17 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   avForm.addEventListener("input", () => { avMsg.textContent = ""; avMsg.className = "av-msg"; });
   avForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const v = Object.fromEntries(["name", "section", "address", "city", "state", "zip", "phone", "notes"].map((k) => [k, avVal(k)]));
+    const v = Object.fromEntries(["name", "address", "city", "state", "zip", "phone", "notes"].map((k) => [k, avVal(k)]));
     v.state = v.state.toUpperCase();
     const digits = v.phone.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
-    const missing = [!v.name && "business name", !v.section && "section", !v.address && "street address", !v.city && "city",
+    const missing = [!v.name && "business name", !v.address && "street address", !v.city && "city",
       !/^[A-Z]{2}$/.test(v.state) && "2-letter state", digits.length !== 10 && "10-digit phone number"].filter(Boolean);
     if (missing.length) { avMsg.textContent = "Still needed: " + missing.join(", ") + "."; return; }
     v.services = [...av.querySelectorAll("fieldset input:checked")].map((x) => x.value).join(", ");
+    if (!v.services) { avMsg.textContent = "Check at least one box for what the vendor does."; return; }
+    // The boxes pick the section: towing goes to Towing, anything else to Other Vendors. Claude may add the other
+    // section after checking the vendor's website (scripts/add-vendor.mjs).
+    v.section = /Towing/.test(v.services) && !/Truck repair|Mobile repair|Tires|Trailer repair|Reefer/.test(v.services) ? "Towing" : "Other Vendors";
     if ($("av-web").value) { av.close(); avForm.reset(); return; }
     avMsg.className = "av-msg"; avMsg.textContent = "Sending…"; $("av-send").disabled = true;
     try {
@@ -1774,9 +1771,9 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     { key: "bauer", label: "Bauer Built", letter: "BB", color: "--bauer", text: "#fff", popup: bauerPopup, z: 130 },
     // Vendors added with the "Add a vendor" button (data/added.json) join these two layers once Claude has verified them.
     { key: "towing", section: "towing", label: "Towing companies", letter: "TW", color: "--towing", text: "#fff", popup: osmOrAdded, z: -600,
-      extra: { file: "added", only: (s) => s.section === "towing" } },
+      extra: { file: "added", only: (s) => (s.sections || [s.section]).includes("towing") } },
     { key: "truckshops", section: "other", label: "Truck repair & tire shops", letter: "R", color: "--truckshops", text: "#fff", popup: osmOrAdded, z: -700,
-      extra: { file: "added", only: (s) => s.section !== "towing" },
+      extra: { file: "added", only: (s) => (s.sections || [s.section]).includes("other") },
       // M = mobile repair, T = tire shop, R = repair shop.
       pinLetter: (s) => (s.services.includes("Mobile repair") ? "M" : s.services.includes("Tires") && !s.services.includes("Repair") ? "T" : "R") },
   ];

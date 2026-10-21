@@ -14,21 +14,14 @@ body:
       label: Business name
     validations:
       required: true
-  - type: dropdown
-    id: section
-    attributes:
-      label: Section
-      options:
-        - Towing
-        - Other Vendors
-    validations:
-      required: true
   - type: input
     id: services
     attributes:
       label: Services
-      description: Separate with commas.
+      description: What the vendor does, separated with commas. Towing puts it in the Towing section; the rest in Other Vendors.
       placeholder: Truck repair, Mobile repair, Tires, Towing, Trailer repair, Reefer / APU
+    validations:
+      required: true
   - type: input
     id: address
     attributes:

@@ -1,5 +1,5 @@
 // Handles an "Add a vendor" request (a GitHub issue made from .github/ISSUE_TEMPLATE/add-vendor.yml, usually opened
-// from the map's "Add a vendor" button). The person asking gives the name, section, address and phone; Claude finds
+// from the map's "Add a vendor" button). The person asking gives the name, services, address and phone; Claude finds
 // the rest. A request goes through two rounds:
 //   1. When it is opened: the street address must be found by the U.S. Census geocoder (or OpenStreetMap's), and the
 //      vendor must not already be on the map (same phone within about a mile). If both pass, the request gets the
@@ -38,11 +38,13 @@ for (const part of String(issue.body || "").split(/^### /m).slice(1)) {
   fields[label] = value === "_No response_" ? "" : value;
 }
 const f = (label) => clean(fields[label]) || "";
-// Requested vendors join the Towing or Other Vendors section; an older "Repair shops & fuel" pick goes to Other Vendors.
+// Which sections the vendor goes in. Claude's "### Sections" (after checking the website) wins; otherwise the services
+// decide: Towing puts it in Towing, any other service in Other Vendors, both when it does both. A vendor may be in both.
 const SECTIONS = { "Repair shops & fuel": "other", Towing: "towing", "Other Vendors": "other" };
+const fromServices = (list) => [list.some((x) => /tow/i.test(x)) && "towing", list.some((x) => !/tow/i.test(x)) && "other"].filter(Boolean);
 const req = {
   name: f("Business name"),
-  section: SECTIONS[f("Section")] || "",
+  sections: [],
   services: [...new Set(String(fields.Services || "").split(/[,\n]/).map((x) => clean(x.replace(/^- \[[xX ]\]\s*/, ""))).filter(Boolean))].slice(0, 8),
   address: f("Street address"), city: f("City"), state: f("State (2 letters)").toUpperCase(), zip: formatZip(f("ZIP code")),
   phone: formatPhone(f("Phone number")),
@@ -54,7 +56,10 @@ const req = {
 const lines = [], problems = [];
 const say = (ok, text) => lines.push(`${ok ? "✅" : "❌"} ${text}`);
 if (!req.name) problems.push("The business name is missing.");
-if (!req.section) problems.push("Pick a section: Towing or Other Vendors.");
+req.sections = researched && fields.Sections
+  ? [...new Set(String(fields.Sections).split(/[,\n]/).map((x) => SECTIONS[clean(x)]).filter(Boolean))]
+  : fromServices(req.services).length ? fromServices(req.services) : [SECTIONS[f("Section")]].filter(Boolean);
+if (!req.sections.length) problems.push("Check at least one service so the vendor lands in Towing or Other Vendors.");
 if (!req.address || !req.city || !/^[A-Z]{2}$/.test(req.state)) problems.push("The street address, city and 2-letter state are all needed.");
 if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(req.phone || "")) problems.push("The phone number must be a 10-digit U.S. number.");
 
@@ -104,7 +109,7 @@ if (!problems.length) {
 
 let added = false, store = null, setLabels = [];
 if (!problems.length && researched) {
-  store = { id: `req-${issue.number}`, name: req.name, section: req.section, services: req.services, address: req.address, city: req.city,
+  store = { id: `req-${issue.number}`, name: req.name, sections: req.sections, services: req.services, address: req.address, city: req.city,
     state: req.state, zip: req.zip, phone: req.phone, website: req.website, hours: req.hours || null, hoursSource: req.hoursSource || null,
     lat: +point[0].toFixed(6), lon: +point[1].toFixed(6), verified: new Date().toISOString().slice(0, 10), verifiedUrl: site.url, request: issue.html_url };
   if (approved) {
@@ -117,7 +122,7 @@ if (!problems.length && researched) {
   }
 } else if (!problems.length) setLabels = ["needs-research"];
 
-const label = { towing: "Towing", other: "Other Vendors" }[req.section] || "?";
+const label = req.sections.map((k) => ({ towing: "Towing", other: "Other Vendors" })[k]).join(" + ") || "?";
 const text = [
   `**${req.name || "Vendor"}** → ${label}`, "",
   ...lines, "",
