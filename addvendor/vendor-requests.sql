@@ -6,8 +6,10 @@
 --   * vr_requests has row level security on and no policies, so the public (anon) key cannot touch the table directly.
 --   * The map calls vr_submit(), which checks every field and refuses floods (more than 60 requests in an hour,
 --     or the same phone number twice in a day).
---   * vr_pending() lists requests Claude has not looked at yet. It returns only what the form asks for, which is
---     public business information (name, address, phone), never who sent it.
+--   * The daily import (scripts/import-vendor-requests.mjs) reads vr_requests with the service key, kept as the
+--     Actions secret SUPABASE_SERVICE_KEY, and marks each request "sent" once its GitHub request exists.
+--   * vr_pending() lists requests Claude has not looked at yet, for the owner in the SQL Editor only. The public
+--     key can't run it (requests carry notes from the person who sent them).
 
 create table if not exists vr_requests (
   id bigint generated always as identity primary key,
@@ -71,4 +73,6 @@ language sql security definer set search_path = public as $$
   from vr_requests where status = 'new'
 $$;
 
-grant execute on function vr_submit(text, text, text, text, text, text, text, text, text), vr_pending() to anon;
+grant execute on function vr_submit(text, text, text, text, text, text, text, text, text) to anon;
+-- PostgreSQL lets everyone (PUBLIC) run a new function, so take that away from vr_pending explicitly.
+revoke execute on function vr_pending() from public, anon, authenticated;
