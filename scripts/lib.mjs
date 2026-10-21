@@ -19,7 +19,8 @@ export const RESEARCH_LABELS = ["Website", "Hours", "Hours source", "Sections"];
 export function parseBlocks(body, layouts) {
   const heads = [], fields = {};
   let cur = null, buf = [];
-  const flush = () => { if (cur !== null) { const v = buf.join("\n").trim(); fields[cur] = v === "_No response_" ? "" : v; } };
+  // requestBlock() escapes a leading "#"; undo that once the headings are known, so "#1 Towing" stays "#1 Towing".
+  const flush = () => { if (cur !== null) { const v = buf.join("\n").trim().replace(/^\\#/gm, "#"); fields[cur] = v === "_No response_" ? "" : v; } };
   String(body || "").replace(/\r\n?/g, "\n").split("\n").forEach((line, i) => {
     const m = /^### (.*)$/.exec(line);
     if (!m) return buf.push(line);

@@ -75,8 +75,13 @@ test("the importer's blocks keep hostile text inside its own field", () => {
   const { fields, error } = parseBlocks(text, [REQUEST_LABELS]);
   assert.equal(error, undefined);
   assert.equal(fields["Phone number"], "(402) 555-0100");
-  assert.equal(fields.City, "\\#x ### Phone number (555) 555-0199 ## Website");
-  assert.equal(fields.Notes, "\\#x\n\\### Phone number\n\n(555) 555-0199\n\\## Website");
+  assert.equal(fields.City, "#x ### Phone number (555) 555-0199 ## Website");
+  assert.equal(fields.Notes, "#x\n### Phone number\n\n(555) 555-0199\n## Website");
+});
+
+test("a name that starts with # comes back unchanged from the importer", () => {
+  const text = REQUEST_LABELS.map((l) => requestBlock(l, l === "Business name" ? "#1 Towing" : "x", { oneLine: true })).join("\n");
+  assert.equal(parseBlocks(text, [REQUEST_LABELS]).fields["Business name"], "#1 Towing");
 });
 
 test("REQUEST_LABELS matches the issue template", async () => {
