@@ -1821,7 +1821,15 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     const row = document.getElementById("lt-" + b.key);
     const group = (groups[b.key] = brandGroup(b)), icons = {};
     const iconFor = (s) => { const l = b.pinLetter ? b.pinLetter(s) : b.letter; return (icons[l] ||= brandIcon(b, l)); };
-    const getData = (file) => fetch(`data/${file}.json`).then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))));
+    // Each file gets 20 seconds. One that never finishes is marked "not available" instead of holding up every search,
+    // which waits for all layers to settle (brandsReady).
+    const getData = (file) => {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+      return fetch(`data/${file}.json`, { signal: ctl.signal })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+        .catch((e) => Promise.reject(e.name === "AbortError" ? new Error("timed out") : e))
+        .finally(() => clearTimeout(timer));
+    };
     // b.extra adds part of another file to this layer, e.g. requested vendors Claude verified. A missing extra file is skipped.
     return Promise.all([getData(b.file || b.key), b.extra ? getData(b.extra.file).catch(() => ({ stores: [] })) : null])
       .then(([d, x]) => {
