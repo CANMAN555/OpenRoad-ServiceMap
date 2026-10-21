@@ -1342,7 +1342,15 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
     `<div class="hrs">${rows.length ? rows.map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join("") : "<div><b>Hours:</b> Not listed by the company. Call to confirm.</div>"}${extra}</div>`;
   const phoneRow = (label, p) => (p ? `<div class="row">${label ? `<b>${esc(label)}:</b> ` : ""}<a class="ph" href="${telHref(p)}">${esc(p)}</a></div>` : "");
   const addrRow = (s) => `<div class="row">${esc(s.address)}<br>${esc(s.city)}, ${esc(s.state)} ${esc(s.zip || "")}</div>`;
-  const linkRow = (url, text) => (url ? `<div class="row"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(text)}</a></div>` : "");
+  // External links from company and OpenStreetMap data: a bare "www.shop.com" gets https://, and anything that isn't
+  // an http(s) address (javascript:, data:, mailto: or junk) gets no link at all.
+  const safeUrl = (u) => {
+    const t = String(u || "").trim();
+    if (!t) return null;
+    const v = /^[a-z][a-z0-9+.-]*:/i.test(t) && !/^[^:/]+\.[a-z]{2,}:\d+/i.test(t) ? t : "https://" + t.replace(/^\/+/, "");
+    try { const x = new URL(v); const labels = x.hostname.replace(/\.$/, "").split("."); return /^https?:$/.test(x.protocol) && labels.length > 1 && labels.every(Boolean) ? x.href : null; } catch { return null; }
+  };
+  const linkRow = (url, text) => { const u = safeUrl(url); return u ? `<div class="row"><a href="${esc(u)}" target="_blank" rel="noopener">${esc(text)}</a></div>` : ""; };
   // Red notice for a Love's or TA that sells fuel but has no truck repair shop and no tire service.
   const fuelOnly = (yes) => (yes ? `<div class="fuel-only" role="note">This is a fuel stop only!</div>` : "");
   const srcRow = (who, checked) => `<div class="src">From ${esc(who)}, checked ${esc(checked)}. Call to confirm.</div>`;
@@ -1752,7 +1760,7 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       <div class="row">${esc(s.address)}<br>${esc(s.city)}, ${esc(s.state)} ${esc(s.zip)}</div>
       <div class="row">${s.phone ? `<a class="ph" href="${telHref(s.phone)}">${esc(s.phone)}</a>` : "No phone listed"}</div>
       ${s.roadService24 ? `<span class="badge">24-hour road service</span>` : ""}
-      <div class="row"><a href="${esc(s.url)}" target="_blank" rel="noopener">Location page on loves.com</a></div>
+      ${linkRow(s.url, "Location page on loves.com")}
       <div class="src">From Love's store locator, checked ${esc(checked)}. Call to confirm.</div>
     </div>`;
   }
@@ -2368,7 +2376,8 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
   function card(v, unit) {
     const { b, s } = v, ph = phones(s), addr = address(s);
     const dir = `https://www.google.com/maps/dir/?api=1&destination=${v.lat.toFixed(6)},${v.lon.toFixed(6)}`;
-    const web = s.url || s.website;
+    // Same link the popup shows: the page the phone number was checked on, else the company's own link.
+    const web = safeUrl(s.verifiedUrl || s.url || s.website);
     const copyText = [`${b.label}: ${v.name}`, ph.join(" / "), addr, unit === "mile" ? `Route mile ${v.mile.toFixed(1)}` : `${v.mile.toFixed(1)} mi from truck`, `${v.lat.toFixed(5)}, ${v.lon.toFixed(5)}`].filter(Boolean).join("\n");
     return `<li class="card" data-id="${esc(v.id)}">
       <div class="mile"><span class="n">${v.mile.toFixed(v.mile < 100 ? 1 : 0)}</span><span class="u">${unit}</span></div>
