@@ -18,8 +18,8 @@ body:
     id: services
     attributes:
       label: Services
-      description: What the vendor does, separated with commas. Towing puts it in the Towing section; the rest in Other Vendors.
-      placeholder: Truck repair, Mobile repair, Tires, Towing, Trailer repair, Reefer / APU
+      description: What the vendor does, separated with commas. Towing goes in Towing, Locksmith in Locksmiths, Glass repair in Glass repair; the rest in Other Vendors.
+      placeholder: Truck repair, Mobile repair, Tires, Towing, Trailer repair, Reefer / APU, Locksmith, Glass repair
     validations:
       required: true
   - type: input

@@ -93,11 +93,12 @@ await pool(all, 16, async (s) => {
 });
 console.log(`Website check of ${all.length} places:`, JSON.stringify(why));
 for (const k of ["lock", "glass"]) out[k] = out[k].filter((s) => !s.unverified);
-// A glass shop must work on vehicles: its website has to mention windshields or auto/vehicle glass.
-const VEHICLE_GLASS = /\b(windshields?|windscreens?|auto ?glass|automotive glass|vehicle glass|car glass|truck glass|rock chips?|chip repair)\b/i;
+// A glass shop must advertise vehicle glass work: "auto glass" or a windshield in its name, or its website offering
+// windshield / auto glass repair or replacement (a body shop that only mentions windshield wipers doesn't count).
+const VEHICLE_GLASS = /\b(auto ?glass|automotive glass|vehicle glass|car glass|truck glass|(?:windshields?|windscreens?|glass|rock chips?|chips?)[ -](?:repairs?|replacements?|installation))\b/i;
 const notVehicle = [];
-out.glass = out.glass.filter((s) => { const ok = VEHICLE_GLASS.test(s.siteText) || GLASS_NAME.test(s.name); if (!ok) notVehicle.push(`${s.name} (${s.city}, ${s.state})`); return ok; });
-console.log(`Left out ${notVehicle.length} glass shops whose website doesn't mention vehicle glass:\n  ` + notVehicle.join("\n  "));
+out.glass = out.glass.filter((s) => { const ok = GLASS_NAME.test(s.name) || VEHICLE_GLASS.test(s.siteText); if (!ok) notVehicle.push(`${s.name} (${s.city}, ${s.state})`); return ok; });
+console.log(`Left out ${notVehicle.length} glass shops whose website doesn't advertise vehicle glass work:\n  ` + notVehicle.join("\n  "));
 for (const s of all) delete s.siteText;
 
 const meta = { source: "OpenStreetMap contributors (ODbL), openstreetmap.org/copyright", fetched_at: new Date().toISOString() };

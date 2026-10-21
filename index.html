@@ -717,6 +717,8 @@
   --stm: #121212;           /* Southern Tire Mart pins (black, red letters) */
   --towing: #D81B60;        /* Towing company pins (deep pink) */
   --truckshops: #6D4C41;    /* Independent truck repair and tire shop pins (brown) */
+  --locksmiths: #F9A825;    /* Locksmith pins (amber, navy letters) */
+  --glassrepair: #26C6DA;   /* Vehicle glass repair pins (cyan, navy letters) */
   --mack: #B0BEC5;          /* Mack Trucks dealer pins (silver, navy letters) */
   --rush: #7CB342;          /* Rush Truck Centers pins (green, navy letters) */
   --pomps: #10312B;         /* Pomp's Tire pins (Pomp's dark green) */
@@ -1017,6 +1019,8 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       <label><input type="checkbox" value="Towing">Towing</label>
       <label><input type="checkbox" value="Trailer repair">Trailer repair</label>
       <label><input type="checkbox" value="Reefer / APU">Reefer / APU</label>
+      <label><input type="checkbox" value="Locksmith">Locksmith</label>
+      <label><input type="checkbox" value="Glass repair">Glass repair</label>
     </fieldset>
     <label class="f"><span>Street address <span class="req">*</span></span><input type="text" id="av-address" maxlength="120" placeholder="1234 Main St" required></label>
     <div class="av-row three">
@@ -1776,13 +1780,20 @@ body.ws-board .panel, body.ws-board .side-toggle, body.ws-board .leaflet-control
       extra: { file: "added", only: (s) => (s.sections || [s.section]).includes("other") },
       // M = mobile repair, T = tire shop, R = repair shop.
       pinLetter: (s) => (s.services.includes("Mobile repair") ? "M" : s.services.includes("Tires") && !s.services.includes("Repair") ? "T" : "R") },
+    // Not only for semis (Manny, 2026-10-21): shops that work on cars usually do trucks too.
+    { key: "locksmiths", section: "locksmith", label: "Locksmiths", letter: "LK", color: "--locksmiths", text: "#0B1F33", popup: osmOrAdded, z: -800,
+      extra: { file: "added", only: (s) => (s.sections || []).includes("locksmith") } },
+    { key: "glass", section: "glass", label: "Glass repair", letter: "GL", color: "--glassrepair", text: "#0B1F33", popup: osmOrAdded, z: -900,
+      extra: { file: "added", only: (s) => (s.sections || []).includes("glass") } },
   ];
   // Filter sections, in the order they show under the search box and in the map's company box.
-  // A company joins one with section: "towing" or "other"; without one it is a repair shop or fuel stop.
+  // A company joins one with section: "towing", "other", "locksmith" or "glass"; without one it is a repair shop or fuel stop.
   const SECTIONS = [
     { key: "shops", label: "Repair shops & fuel" },
     { key: "towing", label: "Towing" },
     { key: "other", label: "Other Vendors" },
+    { key: "locksmith", label: "Locksmiths" },
+    { key: "glass", label: "Glass repair" },
   ];
   const secOf = (b) => b.section || "shops";
   const inSection = (key) => BRANDS.filter((b) => secOf(b) === key);

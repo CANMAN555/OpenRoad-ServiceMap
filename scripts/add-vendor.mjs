@@ -39,9 +39,11 @@ for (const part of String(issue.body || "").split(/^### /m).slice(1)) {
 }
 const f = (label) => clean(fields[label]) || "";
 // Which sections the vendor goes in. Claude's "### Sections" (after checking the website) wins; otherwise the services
-// decide: Towing puts it in Towing, any other service in Other Vendors, both when it does both. A vendor may be in both.
-const SECTIONS = { "Repair shops & fuel": "other", Towing: "towing", "Other Vendors": "other" };
-const fromServices = (list) => [list.some((x) => /tow/i.test(x)) && "towing", list.some((x) => !/tow/i.test(x)) && "other"].filter(Boolean);
+// decide: Towing puts it in Towing, Locksmith in Locksmiths, Glass repair in Glass repair, any other service in Other
+// Vendors. A vendor may be in more than one.
+const SECTIONS = { "Repair shops & fuel": "other", Towing: "towing", "Other Vendors": "other", Locksmiths: "locksmith", Locksmith: "locksmith", "Glass repair": "glass" };
+const kindOf = (x) => (/tow/i.test(x) ? "towing" : /lock/i.test(x) ? "locksmith" : /glass|windshield/i.test(x) ? "glass" : "other");
+const fromServices = (list) => ["towing", "other", "locksmith", "glass"].filter((k) => list.some((x) => kindOf(x) === k));
 const req = {
   name: f("Business name"),
   sections: [],
@@ -59,7 +61,7 @@ if (!req.name) problems.push("The business name is missing.");
 req.sections = researched && fields.Sections
   ? [...new Set(String(fields.Sections).split(/[,\n]/).map((x) => SECTIONS[clean(x)]).filter(Boolean))]
   : fromServices(req.services).length ? fromServices(req.services) : [SECTIONS[f("Section")]].filter(Boolean);
-if (!req.sections.length) problems.push("Check at least one service so the vendor lands in Towing or Other Vendors.");
+if (!req.sections.length) problems.push("Check at least one service so the vendor lands in a section.");
 if (!req.address || !req.city || !/^[A-Z]{2}$/.test(req.state)) problems.push("The street address, city and 2-letter state are all needed.");
 if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(req.phone || "")) problems.push("The phone number must be a 10-digit U.S. number.");
 
@@ -122,7 +124,7 @@ if (!problems.length && researched) {
   }
 } else if (!problems.length) setLabels = ["needs-research"];
 
-const label = req.sections.map((k) => ({ towing: "Towing", other: "Other Vendors" })[k]).join(" + ") || "?";
+const label = req.sections.map((k) => ({ towing: "Towing", other: "Other Vendors", locksmith: "Locksmiths", glass: "Glass repair" })[k]).join(" + ") || "?";
 const text = [
   `**${req.name || "Vendor"}** → ${label}`, "",
   ...lines, "",
