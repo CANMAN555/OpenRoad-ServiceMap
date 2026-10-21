@@ -7,8 +7,9 @@ import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const script = new URL("../scripts/import-vendor-requests.mjs", import.meta.url).pathname;
+const script = fileURLToPath(new URL("../scripts/import-vendor-requests.mjs", import.meta.url));
 const STUB = `
   import { readFileSync, writeFileSync } from "node:fs";
   const file = process.env.STUB_STATE, load = () => JSON.parse(readFileSync(file, "utf8")), save = (s) => writeFileSync(file, JSON.stringify(s));
