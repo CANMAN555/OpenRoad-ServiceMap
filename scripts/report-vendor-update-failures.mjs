@@ -15,7 +15,9 @@ const updaters = [
   ["Pomp's Tire", "POMPS_OUTCOME"],
   ["Bauer Built", "BAUER_OUTCOME"],
 ];
-const failed = updaters.filter(([, key]) => process.env[key] === "failure").map(([name]) => name);
+// Anything but "success" (failure, cancelled, skipped, or no outcome at all) means that source was not refreshed.
+const failed = updaters.filter(([, key]) => process.env[key] !== "success")
+  .map(([name, key]) => process.env[key] === "failure" ? name : `${name} (${process.env[key] || "no outcome"})`);
 
 if (failed.length) {
   const list = failed.map((name) => `- ${name}`).join("\n");
