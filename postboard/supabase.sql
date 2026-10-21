@@ -54,6 +54,9 @@ create or replace function pb_login(pin text) returns text
 language sql security definer set search_path = public, extensions as $$ select pb_check(pin) $$;
 
 -- Everything that changed after the given sequence number (deleted documents come back with deleted = true).
+-- Readers move their cursor to the highest seq they have seen. That is only safe because pb_put and pb_del take the
+-- same advisory lock before taking a seq: without it, a write could take seq 10, a second write seq 11 and commit
+-- first, and a reader that saw 11 would never ask for 10.
 create or replace function pb_changes(pin text, since bigint) returns jsonb
 language plpgsql security definer set search_path = public, extensions as $$
 declare s text := pb_check(pin);
@@ -72,6 +75,8 @@ declare s text := pb_check(pin);
 begin
   if s <> 'ok' then return jsonb_build_object('error', s); end if;
   if pg_column_size(data) > 20000 then return jsonb_build_object('error', 'That entry is too long to save.'); end if;
+  -- One write at a time, so writes commit in seq order and pb_changes never skips one (see the note above pb_changes).
+  perform pg_advisory_xact_lock(7426001);
   insert into pb_docs as d (col, id, data) values (pb_put.col, pb_put.id, pb_put.data)
   on conflict on constraint pb_docs_pkey do update
     set data = case when pb_put.merge and not d.deleted then d.data || excluded.data else excluded.data end,
@@ -84,6 +89,7 @@ language plpgsql security definer set search_path = public, extensions as $$
 declare s text := pb_check(pin);
 begin
   if s <> 'ok' then return jsonb_build_object('error', s); end if;
+  perform pg_advisory_xact_lock(7426001);
   update pb_docs d set deleted = true, data = '{}'::jsonb, seq = nextval('pb_seq'), updated_at = now()
   where d.col = pb_del.col and d.id = pb_del.id;
   return jsonb_build_object('ok', true);
