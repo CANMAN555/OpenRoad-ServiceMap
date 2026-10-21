@@ -34,3 +34,5 @@ jobs:
       - run: node scripts/import-vendor-requests.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # Reads vr_requests and marks each one sent; the public key can't (BUG-C11).
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
