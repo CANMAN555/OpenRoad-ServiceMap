@@ -1,5 +1,10 @@
 // Small helpers shared by the vendor update scripts.
+import dns from "node:dns";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import http from "node:http";
+import https from "node:https";
+import net from "node:net";
+import zlib from "node:zlib";
 
 export const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0; +https://github.com/CANMAN555/OpenRoad-ServiceMap)";
 
@@ -9,8 +14,8 @@ const decode = (s) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
   e[0] === "#" ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : +e.slice(1)) : NAMED[e.toLowerCase()] ?? m);
 export const clean = (s) => (s == null ? null : decode(String(s)).replace(/\s+/g, " ").trim() || null);
 // Vendor requests are GitHub issues made of "### Label\n\nvalue" blocks. These are the issue form's labels, in order
-// (.github/ISSUE_TEMPLATE/add-vendor.yml; tests/parse-blocks.test.mjs keeps the two in step), then the blocks Claude
-// adds after checking the vendor online (older requests have no Sections block).
+// (.github/ISSUE_TEMPLATE/add-vendor.yml; tests/parse-blocks.test.mjs keeps the two in step), then the blocks of Claude's
+// research comment (see researchOf; Sections may be left out).
 export const REQUEST_LABELS = ["Business name", "Services", "Street address", "City", "State (2 letters)", "ZIP code", "Phone number", "Notes"];
 export const RESEARCH_LABELS = ["Website", "Hours", "Hours source", "Sections"];
 // Reads such a body. It counts only when its headings are exactly one of the layouts given, in order, so a field whose
@@ -33,6 +38,16 @@ export function parseBlocks(body, layouts) {
   return { error: bad
     ? `The request does not match the form: line ${bad.line} starts with \`### ${bad.label.replace(/`/g, "'").slice(0, 80)}\`. A field may not contain a line that starts with "### ".`
     : `The request does not match the form: fields are missing after \`${(heads.at(-1)?.label ?? "the start").replace(/`/g, "'").slice(0, 80)}\`.` };
+}
+// Claude's research on a request (website, hours, sections) is a comment that starts with RESEARCH_MARK, written by the
+// repository owner or a collaborator. The request's own text can be edited by whoever opened it, so it never holds
+// research (BUG-C1). The newest such comment counts; comments must be in the order GitHub lists them (oldest first).
+// Returns { fields }, { error } or null when there is none.
+export const RESEARCH_MARK = "<!-- claude-research -->";
+const TRUSTED = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+export function researchOf(comments) {
+  const c = comments.filter((x) => TRUSTED.has(x.author_association) && String(x.body || "").startsWith(RESEARCH_MARK)).at(-1);
+  return c ? parseBlocks(c.body.slice(RESEARCH_MARK.length), [RESEARCH_LABELS.slice(0, 3), RESEARCH_LABELS]) : null;
 }
 // One block for a request built outside the issue form. "#" at the start of a line is escaped so typed text can never
 // become a heading, and single-line fields stay on one line.
@@ -179,12 +194,95 @@ export async function liveMatcher(extra = []) {
   };
 }
 
+// ---------- fetching a vendor's website (BUG-C8) ----------
+// The website comes from a vendor request, so it may point at the runner's own network (127.0.0.1, 169.254.169.254, a
+// private LAN) or at a name or redirect that leads there. Only public addresses are fetched: an IP written in the URL is
+// checked before connecting, and a host name is checked at connect time against every address DNS returns (Node then
+// connects to one of those, so there is no second lookup to trick). Each redirect hop is a new request with the same checks.
+const v4 = (ip) => ip.split(".").reduce((n, o) => n * 256 + Number(o), 0);
+const V4_BLOCKED = [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12],
+  ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24], ["224.0.0.0", 3]]
+  .map(([a, bits]) => [v4(a), 2 ** (32 - bits)]);
+// "::ffff:127.0.0.1" -> eight 16-bit groups.
+function v6Groups(ip) {
+  let s = ip.toLowerCase().replace(/%.*$/, "");
+  const tail = /(\d+\.\d+\.\d+\.\d+)$/.exec(s);
+  if (tail) { const n = v4(tail[1]); s = s.slice(0, -tail[1].length) + (n >>> 16).toString(16) + ":" + (n & 0xffff).toString(16); }
+  const [head, rest] = s.split("::");
+  const a = head ? head.split(":") : [], b = rest ? rest.split(":") : [];
+  const g = rest === undefined ? a : [...a, ...Array(8 - a.length - b.length).fill("0"), ...b];
+  return g.map((x) => parseInt(x, 16));
+}
+export function isPublicAddress(ip) {
+  const kind = net.isIP(String(ip || "").replace(/%.*$/, ""));
+  if (kind === 4) { const n = v4(ip); return !V4_BLOCKED.some(([a, size]) => n >= a && n < a + size); }
+  if (kind !== 6) return false;
+  const g = v6Groups(ip);
+  // IPv4-mapped (::ffff:a.b.c.d), IPv4-compatible (::a.b.c.d) and NAT64 (64:ff9b::a.b.c.d) carry an IPv4 address.
+  const v4Tail = () => `${g[6] >> 8}.${g[6] & 255}.${g[7] >> 8}.${g[7] & 255}`;
+  if (g.slice(0, 5).every((x) => x === 0) && (g[5] === 0xffff || g[5] === 0)) return g[5] === 0 && g[6] === 0 && g[7] <= 1 ? false : isPublicAddress(v4Tail());
+  if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) return isPublicAddress(v4Tail());
+  if ((g[0] & 0xfe00) === 0xfc00 || (g[0] & 0xffc0) === 0xfe80 || (g[0] & 0xff00) === 0xff00) return false; // unique-local, link-local, multicast
+  if (g[0] === 0x2001 && g[1] === 0xdb8) return false; // documentation
+  return true;
+}
+const blocked = (what) => Object.assign(new Error(`${what} is not a public internet address`), { code: "EBLOCKED" });
+// A DNS lookup for http(s).request that fails when any address for the name is not public.
+export function guardedLookup(resolve = dns.lookup) {
+  return (host, opts, cb) => {
+    if (typeof opts === "function") { cb = opts; opts = {}; }
+    resolve(host, { all: true, family: opts.family || 0 }, (err, list) => {
+      if (err) return cb(err);
+      if (!list.length || list.some((a) => !isPublicAddress(a.address))) return cb(blocked(host));
+      opts.all ? cb(null, list) : cb(null, list[0].address, list[0].family);
+    });
+  };
+}
+// GET a web page from a public address only. Resolves { url, status, html } for the final hop, or rejects.
+// request and resolve are swapped out by the tests; the scripts use the defaults.
+export function safeGet(url, { timeoutMs = 20000, maxBytes = 2e6, maxRedirects = 5, request, resolve } = {}, hops = 0) {
+  return new Promise((done, fail) => {
+    let u;
+    try { u = new URL(url); } catch { return fail(new Error(`bad URL: ${url}`)); }
+    if (!/^https?:$/.test(u.protocol)) return fail(new Error(`not http(s): ${u.protocol}`));
+    if (u.port && u.port !== "80" && u.port !== "443") return fail(new Error(`port ${u.port} is not allowed`));
+    const host = u.hostname.replace(/^\[|\]$/g, "");
+    // Node skips the lookup function for a host that is already an IP address, so check that address here.
+    if (net.isIP(host) && !isPublicAddress(host)) return fail(blocked(host));
+    const send = request || (u.protocol === "https:" ? https.request : http.request);
+    const req = send(u, { method: "GET", lookup: guardedLookup(resolve), headers: { "User-Agent": UA, Accept: "text/html,*/*", "Accept-Encoding": "gzip, deflate, br" } }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume(); clearTimeout(timer);
+        if (hops >= maxRedirects) return fail(new Error("too many redirects"));
+        let next;
+        try { next = new URL(res.headers.location, u).href; } catch { return fail(new Error("bad redirect")); }
+        return safeGet(next, { timeoutMs, maxBytes, maxRedirects, request, resolve }, hops + 1).then(done, fail);
+      }
+      const enc = String(res.headers["content-encoding"] || "").toLowerCase();
+      const body = enc === "gzip" || enc === "x-gzip" ? res.pipe(zlib.createGunzip()) : enc === "deflate" ? res.pipe(zlib.createInflate())
+        : enc === "br" ? res.pipe(zlib.createBrotliDecompress()) : res;
+      const parts = [];
+      let size = 0, finished = false;
+      const finish = () => { if (finished) return; finished = true; clearTimeout(timer); done({ url: u.href, status: res.statusCode, html: Buffer.concat(parts).toString("utf8") }); };
+      body.on("data", (c) => {
+        if (finished) return;
+        // A page past maxBytes is cut there; the phone number is near the top of a homepage or in its footer well before that.
+        parts.push(c.subarray(0, maxBytes - size)); size += c.length;
+        if (size >= maxBytes) { finish(); req.destroy(); }
+      });
+      body.on("end", finish);
+      body.on("error", (e) => { if (!finished) { finished = true; clearTimeout(timer); fail(e); } });
+    });
+    const timer = setTimeout(() => req.destroy(new Error(`timed out after ${timeoutMs} ms`)), timeoutMs);
+    req.on("error", (e) => { clearTimeout(timer); fail(e); });
+    req.end();
+  });
+}
 async function getPage(url) {
-  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 20000);
   try {
-    const r = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { "User-Agent": UA, Accept: "text/html,*/*" } });
-    return r.ok ? { url: r.url || url, html: await r.text() } : null;
-  } catch { return null; } finally { clearTimeout(t); }
+    const r = await safeGet(url);
+    return r.status >= 200 && r.status < 300 ? { url: r.url, html: r.html } : null;
+  } catch { return null; }
 }
 // "(864) 419-1067" matches 864-419-1067, 864.419.1067, 8644191067, +1 864 419 1067 and tel: links.
 const phoneIn = (html, d) => new RegExp(`\\(?${d.slice(0, 3)}\\)?[\\s.\\-\\u00a0]*${d.slice(3, 6)}[\\s.\\-\\u00a0]*${d.slice(6)}(?!\\d)`).test(html);

@@ -4,23 +4,34 @@
 //   1. When it is opened: the street address must be found by the U.S. Census geocoder (or OpenStreetMap's), and the
 //      vendor must not already be on the map (same phone within about a mile). If both pass, the request gets the
 //      "needs-research" label.
-//   2. Claude looks the business up online, finds its own website and store hours, adds them to the request as
-//      "### Website", "### Hours" and "### Hours source", and labels it "checked-by-claude". This script then fetches
-//      that website itself and the phone number must be on it.
+//   2. Claude looks the business up online, finds its own website and store hours, posts them as a research comment
+//      (see researchOf in lib.mjs: "### Website", "### Hours", "### Hours source" and "### Sections" under the
+//      RESEARCH_MARK line), and labels the request "checked-by-claude". This script then fetches that website itself
+//      and the phone number must be on it.
 // The vendor goes into data/added.json only when every check passes and the request comes from the repository owner
 // (or carries the "approved" label). The result is written to comment.md for the workflow to post on the issue, the
 // labels to set to labels.txt, and "added=true|false" to $GITHUB_OUTPUT.
 import { appendFile, readFile, writeFile } from "node:fs/promises";
-import { LIVE_LAYERS, REQUEST_LABELS, RESEARCH_LABELS, UA, censusGeocode, checkSite, clean, formatPhone, formatZip, parseBlocks } from "./lib.mjs";
+import { LIVE_LAYERS, REQUEST_LABELS, UA, censusGeocode, checkSite, clean, formatPhone, formatZip, parseBlocks, researchOf } from "./lib.mjs";
 
 const out = async (added) => process.env.GITHUB_OUTPUT && appendFile(process.env.GITHUB_OUTPUT, `added=${added}\n`);
-// Several events can arrive at once (Claude edits the request and labels it), so read the request as it is now.
+// Several events can arrive at once (Claude comments on the request and labels it), so read the request as it is now.
 const event = JSON.parse(await readFile(process.env.GITHUB_EVENT_PATH, "utf8"));
-let issue = event.issue;
-if (process.env.GITHUB_TOKEN && process.env.GITHUB_REPOSITORY) {
-  const r = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/issues/${issue.number}`,
-    { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json", "User-Agent": UA } });
+let issue = event.issue, comments = [];
+const api = process.env.GITHUB_TOKEN && process.env.GITHUB_REPOSITORY;
+const gh = (path) => fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/issues/${issue.number}${path}`,
+  { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json", "User-Agent": UA } });
+if (api) {
+  const r = await gh("");
   if (r.ok) issue = await r.json();
+  // Every comment, oldest first, 100 to a page.
+  for (let page = 1; ; page++) {
+    const c = await gh(`/comments?per_page=100&page=${page}`);
+    if (!c.ok) throw new Error(`Reading the comments failed: HTTP ${c.status}`);
+    const list = await c.json();
+    comments.push(...list);
+    if (list.length < 100) break;
+  }
 }
 if (issue.state !== "open") { console.log("Request already closed."); await out(false); process.exit(0); }
 const labels = new Set(issue.labels.map((l) => l.name));
@@ -30,10 +41,11 @@ const owner = (process.env.REPO_OWNER || "").toLowerCase();
 const approved = labels.has("approved") || (issue.user.login.toLowerCase() === owner && !labels.has("from-website"));
 const researched = labels.has("checked-by-claude");
 
-// The form's fields, then (once Claude has checked the vendor) Claude's blocks; any other layout is turned away.
-const layouts = researched ? [REQUEST_LABELS.concat(RESEARCH_LABELS.slice(0, 3)), REQUEST_LABELS.concat(RESEARCH_LABELS)] : [REQUEST_LABELS];
-const parsed = parseBlocks(issue.body, layouts);
-const fields = parsed.fields || {};
+// The request holds the form's fields and nothing else; any other layout is turned away. Claude's findings come from
+// its research comment only.
+const parsed = parseBlocks(issue.body, [REQUEST_LABELS]);
+const research = researched ? researchOf(comments) : null;
+const fields = { ...parsed.fields, ...research?.fields };
 const f = (label) => clean(fields[label]) || "";
 // Which sections the vendor goes in. Claude's "### Sections" (after checking the website) wins; otherwise the services
 // decide: Towing puts it in Towing, Locksmith in Locksmiths, Glass repair in Glass repair, any other service in Other
@@ -58,6 +70,8 @@ req.sections = researched && fields.Sections
   ? [...new Set(String(fields.Sections).split(/[,\n]/).map((x) => SECTIONS[clean(x)]).filter(Boolean))]
   : fromServices(req.services);
 if (parsed.error) problems.push(parsed.error);
+else if (researched && !research) problems.push("Claude's research comment was not found on this request.");
+else if (research?.error) problems.push(research.error.replace("The request does not match the form", "Claude's research comment does not match its layout"));
 else {
   if (!req.name) problems.push("The business name is missing.");
   if (!req.sections.length) problems.push("Check at least one service so the vendor lands in a section.");
@@ -135,15 +149,7 @@ const text = [
 ].join("\n") + "\n";
 
 // Skip the comment when it would repeat the last one word for word (for example an edit that changed nothing).
-let last = "";
-if (process.env.GITHUB_TOKEN && process.env.GITHUB_REPOSITORY) {
-  try {
-    const r = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/issues/${issue.number}/comments?per_page=100`,
-      { headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json", "User-Agent": UA } });
-    const list = r.ok ? await r.json() : [];
-    last = list.filter((c) => c.user?.login === "github-actions[bot]").pop()?.body || "";
-  } catch {}
-}
+const last = comments.filter((c) => c.user?.login === "github-actions[bot]").pop()?.body || "";
 if (last.trim() !== text.trim()) await writeFile("comment.md", text);
 if (setLabels.length) await writeFile("labels.txt", setLabels.join(",") + "\n");
 await out(added);
