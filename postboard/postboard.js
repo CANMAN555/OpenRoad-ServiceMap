@@ -19,6 +19,10 @@ const names = {};
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Anything from the database that ends up in a class name, a selector or a link must be a value this page knows (a
+// status, a real number); every other value is escaped and shown as text.
+const stCls = (s) => (Object.hasOwn(STATUS, s) ? s : "unknown");
+const coord = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const now = () => new Date().toISOString();
 const byNum = (a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true });
 const unit = (id) => units.find((u) => u.id === id);
@@ -32,7 +36,7 @@ function ago(iso) {
   return fmt(iso);
 }
 const who = (id) => id ? `<span class="who" data-uid="${esc(id)}">${esc(names[id] || "Someone")}</span>` : "";
-const pill = (st, resolved) => resolved ? `<span class="pill resolved">Work complete · closed</span>` : `<span class="pill st-${st}">${esc(STATUS[st] || st)}</span>`;
+const pill = (st, resolved) => resolved ? `<span class="pill resolved">Work complete · closed</span>` : `<span class="pill st-${stCls(st)}">${esc(STATUS[st] || st)}</span>`;
 
 let toastT;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 4000); }
@@ -76,11 +80,11 @@ function destParts(p) {
 function destView(p) {
   const { name, place } = destParts(p);
   const body = name || place ? `${name ? `<span class="dn">${esc(name)}</span>` : ""}${place ? `<span class="${name ? "dp" : "dn"}">${esc(place)}</span>` : ""}` : `<span class="none">Sending to: not set</span>`;
-  return `<button type="button" class="dest-view" data-act="destedit" data-id="${p.id}" title="${esc(p.destination || "")}" aria-label="Sending to ${esc(p.destination || "not set")}, click to change" ${p.resolved ? "disabled" : ""}>${body}</button>`;
+  return `<button type="button" class="dest-view" data-act="destedit" data-id="${esc(p.id)}" title="${esc(p.destination || "")}" aria-label="Sending to ${esc(p.destination || "not set")}, click to change" ${p.resolved ? "disabled" : ""}>${body}</button>`;
 }
 function editDest(id) {
   const el = $("dest-" + id); if (!el) return null;
-  const v = document.querySelector(`.dest-view[data-id="${id}"]`); if (v) v.hidden = true;
+  const v = document.querySelector(`.dest-view[data-id="${CSS.escape(id)}"]`); if (v) v.hidden = true;
   el.hidden = false; el.focus(); return el;
 }
 // Posts made before the Truck / Trailer / Both choice only have "complaint".
@@ -90,7 +94,7 @@ function complaintHtml(p) {
   if (p.truckComplaint) rows.push(`<div class="complaint"><b>Truck complaint:</b> ${esc(p.truckComplaint)}</div>`);
   if (p.trailerComplaint) rows.push(`<div class="complaint"><b>Trailer complaint:</b> ${esc(p.trailerComplaint)}</div>`);
   // Work order numbers often come after the post, so they stay editable on the posting until it is closed.
-  const wo = (which, label) => `<label>${label} <input type="text" id="wo-${which}-${p.id}" data-act="wo" data-which="${which}" data-id="${p.id}" value="${esc(p[which + "WO"] || "")}" data-saved="${esc(p[which + "WO"] || "")}" placeholder="none yet" maxlength="40" ${p.resolved ? "disabled" : ""}></label>`;
+  const wo = (which, label) => `<label>${label} <input type="text" id="wo-${which}-${esc(p.id)}" data-act="wo" data-which="${which}" data-id="${esc(p.id)}" value="${esc(p[which + "WO"] || "")}" data-saved="${esc(p[which + "WO"] || "")}" placeholder="none yet" maxlength="40" ${p.resolved ? "disabled" : ""}></label>`;
   const wos = [p.complaintFor !== "trailer" ? wo("truck", "Truck WO #") : "", p.complaintFor !== "truck" ? wo("trailer", "Trailer WO #") : ""].filter(Boolean);
   rows.push(`<div class="wo-row">${wos.join("")}</div>`);
   return rows.join("");
@@ -119,10 +123,10 @@ function renderFleet() {
       hook = `<div class="sub">${tk ? `Connected to truck <span class="num">${esc(tk.number)}</span>` : "Not connected to a truck"}</div>`;
     }
     return `<li class="unit">
-      <div class="head"><span class="kind">${u.kind}</span><span class="num">${esc(u.number)}</span>${u.demo ? `<span class="demo">DEMO</span>` : ""}${open ? pill(open.status) : ""}
+      <div class="head"><span class="kind">${esc(u.kind)}</span><span class="num">${esc(u.number)}</span>${u.demo ? `<span class="demo">DEMO</span>` : ""}${open ? pill(open.status) : ""}
         <span style="margin-left:auto;display:flex;gap:6px">
-          <button class="btn ghost" data-act="uhist" data-id="${u.id}" aria-expanded="${openHist.has(u.id)}">History (${n})</button>
-          <button class="btn ghost danger" data-act="remove" data-id="${u.id}">Delete</button>
+          <button class="btn ghost" data-act="uhist" data-id="${esc(u.id)}" aria-expanded="${openHist.has(u.id)}">History (${n})</button>
+          <button class="btn ghost danger" data-act="remove" data-id="${esc(u.id)}">Delete</button>
         </span></div>
       ${hook}
       ${openHist.has(u.id) ? historyFor(u.id) : ""}
@@ -132,7 +136,7 @@ function renderFleet() {
   $("trailers").innerHTML = trailers.length ? trailers.map(unitRow).join("") : `<li class="empty">Click Add unit to add trailers, then hook one to a truck.</li>`;
 
   const sel = $("np-truck"), keep = sel.value;
-  sel.innerHTML = `<option value="">Choose a truck</option>` + trucks.map((t) => `<option value="${t.id}">Truck ${esc(t.number)}</option>`).join("");
+  sel.innerHTML = `<option value="">Choose a truck</option>` + trucks.map((t) => `<option value="${esc(t.id)}">Truck ${esc(t.number)}</option>`).join("");
   if (trucks.some((t) => t.id === keep)) sel.value = keep;
   showTrailer();
 }
@@ -152,7 +156,7 @@ function showTrailer() {
   const b = $("np-truck-btn"); b.textContent = t ? "Truck " + t.number : "Choose a truck"; b.classList.toggle("empty", !t);
   if (pk && !document.contains(pk.anchor)) {
     // The fleet list re-drew under an open picker: re-attach it to the new button, or close it.
-    const again = pk.anchor.dataset.id && document.querySelector(`[data-act="hookpick"][data-id="${pk.anchor.dataset.id}"]`);
+    const again = pk.anchor.dataset.id && document.querySelector(`[data-act="hookpick"][data-id="${CSS.escape(pk.anchor.dataset.id)}"]`);
     if (again) { pk.anchor = again; again.setAttribute("aria-expanded", "true"); pkPlace(); } else { pop.hidden = true; pk = null; }
   }
   if (pk) pkRender();
@@ -300,20 +304,20 @@ function renderPosts() {
   }
   $("posts").innerHTML = list.map((p) => {
     const hist = events.filter((e) => e.postId === p.id);
-    return `<li class="post ${p.resolved ? "is-resolved" : "st-" + p.status}">
-      <button type="button" class="post-x" data-act="pdel" data-id="${p.id}" aria-label="Delete posting for truck ${esc(p.truckNumber)}" title="Delete posting">&times;</button>
+    return `<li class="post ${p.resolved ? "is-resolved" : "st-" + stCls(p.status)}">
+      <button type="button" class="post-x" data-act="pdel" data-id="${esc(p.id)}" aria-label="Delete posting for truck ${esc(p.truckNumber)}" title="Delete posting">&times;</button>
       <div class="head"><span class="kind">Truck</span><span class="num">${esc(p.truckNumber)}</span>
         ${p.trailerNumber ? `<span class="kind">Trailer</span><span class="num">${esc(p.trailerNumber)}</span>` : ""}
         ${pill(p.status, p.resolved)}</div>
       ${complaintHtml(p)}
       <div class="meta"><span>Reported ${esc(fmt(p.reportedAt))} ${p.reportedBy ? "by " + who(p.reportedBy) : ""}</span>${p.updatedAt && p.updatedAt !== p.reportedAt ? `<span>Updated ${esc(ago(p.updatedAt))} ${p.updatedBy ? "by " + who(p.updatedBy) : ""}</span>` : ""}</div>
       <div class="controls">
-        <select aria-label="Status for truck ${esc(p.truckNumber)}" id="st-${p.id}" data-act="status" data-id="${p.id}" ${p.resolved || p.status === "at_shop" ? "disabled" : ""}>${PICK.map((k) => `<option value="${k}" ${k === (p.status === "at_shop" ? p.prevStatus || "to_shop" : p.status) ? "selected" : ""}>${esc(STATUS[k])}</option>`).join("")}</select>
-        <span class="dest-cell">${destView(p)}<input type="text" hidden id="dest-${p.id}" ${p.resolved ? "disabled" : ""} class="dest" data-act="dest" data-id="${p.id}" value="${esc(p.destination)}" data-lat="${p.destLat ?? ""}" data-lon="${p.destLon ?? ""}" data-saved="${esc(p.destination)}" placeholder="Sending to" aria-label="Sending to" maxlength="200"></span>
-        ${p.destLat != null ? `<a class="btn ghost" href="https://www.google.com/maps/dir/?api=1&destination=${p.destLat},${p.destLon}" target="_blank" rel="noopener">Directions</a>` : ""}
-        <label class="chk"><input type="checkbox" id="shop-${p.id}" data-act="atshop" data-id="${p.id}" ${p.status === "at_shop" ? "checked" : ""} ${p.resolved ? "disabled" : ""}> At shop, work in progress</label>
-        <label class="chk ${p.resolved ? "done" : ""}"><input type="checkbox" id="res-${p.id}" data-act="resolve" data-id="${p.id}" ${p.resolved ? "checked" : ""}> ${p.resolved ? "Work complete (uncheck to reopen)" : "Work complete"}</label>
-        <button class="btn ghost" data-act="phist" data-id="${p.id}" aria-expanded="${openHist.has(p.id)}">Updates (${hist.length})</button>
+        <select aria-label="Status for truck ${esc(p.truckNumber)}" id="st-${esc(p.id)}" data-act="status" data-id="${esc(p.id)}" ${p.resolved || p.status === "at_shop" ? "disabled" : ""}>${PICK.map((k) => `<option value="${k}" ${k === (p.status === "at_shop" ? p.prevStatus || "to_shop" : p.status) ? "selected" : ""}>${esc(STATUS[k])}</option>`).join("")}</select>
+        <span class="dest-cell">${destView(p)}<input type="text" hidden id="dest-${esc(p.id)}" ${p.resolved ? "disabled" : ""} class="dest" data-act="dest" data-id="${esc(p.id)}" value="${esc(p.destination)}" data-lat="${coord(p.destLat) ?? ""}" data-lon="${coord(p.destLon) ?? ""}" data-saved="${esc(p.destination)}" placeholder="Sending to" aria-label="Sending to" maxlength="200"></span>
+        ${coord(p.destLat) != null && coord(p.destLon) != null ? `<a class="btn ghost" href="https://www.google.com/maps/dir/?api=1&destination=${coord(p.destLat)},${coord(p.destLon)}" target="_blank" rel="noopener">Directions</a>` : ""}
+        <label class="chk"><input type="checkbox" id="shop-${esc(p.id)}" data-act="atshop" data-id="${esc(p.id)}" ${p.status === "at_shop" ? "checked" : ""} ${p.resolved ? "disabled" : ""}> At shop, work in progress</label>
+        <label class="chk ${p.resolved ? "done" : ""}"><input type="checkbox" id="res-${esc(p.id)}" data-act="resolve" data-id="${esc(p.id)}" ${p.resolved ? "checked" : ""}> ${p.resolved ? "Work complete (uncheck to reopen)" : "Work complete"}</label>
+        <button class="btn ghost" data-act="phist" data-id="${esc(p.id)}" aria-expanded="${openHist.has(p.id)}">Updates (${hist.length})</button>
       </div>
       ${openHist.has(p.id) ? `<ul class="hist">${hist.map((e) => `<li><span class="when">${esc(fmt(e.at))}</span> ${esc(e.text)} ${e.by ? "· " + who(e.by) : ""}</li>`).join("") || "<li>No updates yet.</li>"}</ul>` : ""}
     </li>`;
@@ -323,7 +327,7 @@ function renderPosts() {
 // so rows still inside their 4-second arrival carry on from where they were instead of being cut off.
 let shownIds = [], tickTimer;
 const decoding = new Map(), DECODE_MS = 4000;
-const tickRow = (e, cls, age = 0) => `<div class="tick ${/closed|Work complete/.test(e.text || "") ? "done" : "st-" + esc(e.status)} ${cls}" data-id="${esc(e.id)}"${age ? ` style="animation-delay:-${Math.round(age)}ms"` : ""}><span class="dot"></span><span class="tunit">TRUCK ${esc(e.truckNumber)}</span><span class="txt">${esc(e.text)}</span><span class="when">${esc(ago(e.at))}${e.by ? " · " + who(e.by) : ""}</span></div>`;
+const tickRow = (e, cls, age = 0) => `<div class="tick ${/closed|Work complete/.test(e.text || "") ? "done" : "st-" + stCls(e.status)} ${cls}" data-id="${esc(e.id)}"${age ? ` style="animation-delay:-${Math.round(age)}ms"` : ""}><span class="dot"></span><span class="tunit">TRUCK ${esc(e.truckNumber)}</span><span class="txt">${esc(e.text)}</span><span class="when">${esc(ago(e.at))}${e.by ? " · " + who(e.by) : ""}</span></div>`;
 function renderLatest() {
   const top = events.slice(0, 5), ids = top.map((e) => e.id), box = $("ticker");
   if (!top.length) { box.innerHTML = `<div class="tick-empty">No repair updates yet. Every new posting and change shows up here for everyone.</div>`; shownIds = []; return; }
