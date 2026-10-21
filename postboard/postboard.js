@@ -22,7 +22,11 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 // Anything from the database that ends up in a class name, a selector or a link must be a value this page knows (a
 // status, a real number); every other value is escaped and shown as text.
 const stCls = (s) => (Object.hasOwn(STATUS, s) ? s : "unknown");
-const coord = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+// A coordinate saved as text ("41.25") still counts; anything that isn't a finite number is left out.
+const coord = (v) => {
+  const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+};
 const now = () => new Date().toISOString();
 const byNum = (a, b) => String(a.number).localeCompare(String(b.number), undefined, { numeric: true });
 const unit = (id) => units.find((u) => u.id === id);
