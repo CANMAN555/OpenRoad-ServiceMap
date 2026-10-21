@@ -5,7 +5,8 @@
 // it is not read again (BUG-C11).
 // The table is read with the service key (Actions secret SUPABASE_SERVICE_KEY), never the public key, and in pages
 // by id until a page comes back empty, so Supabase's cap on rows per answer can't leave requests behind.
-// A request already turned into an issue is recognized by the "Website request #<id>" line: no second issue is opened,
+// A request already turned into an issue is recognized by the "Website request #<id>" line that starts every issue this
+// workflow opens: no second issue is opened,
 // and its row is marked "sent" (this repairs a run where the issue was opened but marking the row failed).
 import { readFile } from "node:fs/promises";
 import { requestBlock as block } from "./lib.mjs";
@@ -23,13 +24,17 @@ const db = (path, init = {}) => fetch(url.replace(/\/$/, "") + "/rest/v1/" + pat
 const repo = process.env.GITHUB_REPOSITORY, gh = (path, init = {}) => fetch(`https://api.github.com/repos/${repo}${path}`, {
   ...init, headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json", "User-Agent": "OpenRoad-ServiceMap", ...(init.headers || {}) },
 });
-// Every website request already on GitHub, open or closed: request id -> issue link.
+// Every website request already on GitHub, open or closed: request id -> issue link. Only issues this workflow opened
+// count, by their first line, so another issue that mentions "Website request #5" can't mark request 5 as sent.
 const done = new Map();
 for (let page = 1; ; page++) {
   const r = await gh(`/issues?labels=from-website&state=all&per_page=100&page=${page}`);
   if (!r.ok) { console.log(`::error::Listing the GitHub requests failed: HTTP ${r.status}`); process.exit(1); }
   const list = await r.json();
-  for (const i of list) { const m = /Website request #(\d+)/.exec(i.body || ""); if (m) done.set(Number(m[1]), i.html_url); }
+  for (const i of list) {
+    const m = /^Website request #(\d+), sent from the map/.exec(i.body || "");
+    if (m && i.user?.login === "github-actions[bot]" && !done.has(Number(m[1]))) done.set(Number(m[1]), i.html_url);
+  }
   if (list.length < 100) break;
 }
 
@@ -56,7 +61,7 @@ for (;;) {
       done.set(q.id, link); opened++;
       console.log(`Opened ${link} for website request #${q.id}`);
     }
-    const p = await db(`vr_requests?id=eq.${q.id}`, { method: "PATCH", body: JSON.stringify({ status: "sent", issue_url: link }), headers: { Prefer: "return=minimal" } });
+    const p = await db(`vr_requests?id=eq.${q.id}&status=eq.new`, { method: "PATCH", body: JSON.stringify({ status: "sent", issue_url: link }), headers: { Prefer: "return=minimal" } });
     if (p.ok) marked++;
     else { console.log(`::error::Could not mark website request #${q.id} as sent: HTTP ${p.status}`); failed++; }
   }

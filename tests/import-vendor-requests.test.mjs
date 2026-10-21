@@ -24,6 +24,7 @@ const STUB = `
         save(s); return Response.json(rows);
       }
       const id = Number(u.searchParams.get("id").slice(3));
+      if (u.searchParams.get("status") !== "eq.new") throw new Error("PATCH without status=eq.new");
       s.patches.push(id);
       if (s.failPatch.includes(id)) { s.failPatch = s.failPatch.filter((x) => x !== id); save(s); return new Response("boom", { status: 500 }); }
       Object.assign(s.rows.find((r) => r.id === id), JSON.parse(init.body)); save(s);
@@ -34,7 +35,7 @@ const STUB = `
       return Response.json(s.issues.slice((page - 1) * 100, page * 100));
     }
     if (u.hostname === "api.github.com") {
-      const issue = { html_url: "https://github.com/x/y/issues/" + (s.issues.length + 1), body: JSON.parse(init.body).body };
+      const issue = { html_url: "https://github.com/x/y/issues/" + (s.issues.length + 1), body: JSON.parse(init.body).body, user: { login: "github-actions[bot]" } };
       s.issues.push(issue); s.created++; save(s); return Response.json(issue, { status: 201 });
     }
     throw new Error("unexpected fetch " + url);
@@ -83,7 +84,8 @@ for (const cap of [1e9, 3]) {
 }
 
 test("a request whose issue exists (on the second page of issues) is marked sent without a new issue", async () => {
-  const issues = Array.from({ length: 150 }, (_, i) => ({ html_url: `https://github.com/x/y/issues/${i + 1}`, body: `Website request #${1000 + i}, sent` }));
+  const issues = Array.from({ length: 150 }, (_, i) => ({ html_url: `https://github.com/x/y/issues/${i + 1}`,
+    body: `Website request #${1000 + i}, sent from the map's Add a vendor form`, user: { login: "github-actions[bot]" } }));
   const t = await setup({ rows: [row(1120)], issues });
   assert.equal((await t.run()).code, 0);
   const s = await t.state();
@@ -105,4 +107,16 @@ test("a failed mark turns the run red, the others still go through, and the next
   assert.equal(s.created, 0);
   assert.deepEqual(s.patches, [2]);
   assert.equal(s.rows[1].issue_url, "https://github.com/x/y/issues/2");
+});
+
+test("an issue that someone else wrote, or that only mentions the request, does not count as its GitHub request", async () => {
+  const issues = [
+    { html_url: "https://github.com/x/y/issues/1", body: "Website request #7, sent from the map", user: { login: "someone" } },
+    { html_url: "https://github.com/x/y/issues/2", body: "Same shop as Website request #7, sent from the map", user: { login: "github-actions[bot]" } },
+  ];
+  const t = await setup({ rows: [row(7)], issues });
+  assert.equal((await t.run()).code, 0);
+  const s = await t.state();
+  assert.equal(s.created, 1);
+  assert.equal(s.rows[0].issue_url, "https://github.com/x/y/issues/3");
 });
