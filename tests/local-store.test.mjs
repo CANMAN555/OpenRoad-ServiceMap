@@ -58,6 +58,12 @@ test("malformed stored JSON rejects opening without changing the stored value", 
   assert.equal(t.getStored(), "{broken json");
 });
 
+test("a stored collection that is not an object rejects opening without changing the stored value", async () => {
+  const t = setup({ raw: '{"posts":null}' });
+  await assert.rejects(openBoard(t), /Could not parse local Post Board storage: Collection "posts" is not an object/);
+  assert.equal(t.getStored(), '{"posts":null}');
+});
+
 test("a failed optimistic post write rejects and rolls back the cache", async () => {
   const raw = JSON.stringify({ posts: { old: { text: "keep" } } });
   const t = setup({ raw, setError: new Error("quota exceeded") });

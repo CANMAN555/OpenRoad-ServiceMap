@@ -124,6 +124,8 @@
       try {
         const all = JSON.parse(raw);
         if (!all || typeof all !== "object" || Array.isArray(all)) throw new Error("Stored data is not a board object.");
+        for (const [col, docs] of Object.entries(all))
+          if (!docs || typeof docs !== "object" || Array.isArray(docs)) throw new Error(`Collection "${col}" is not an object.`);
         return all;
       } catch (e) {
         throw new Error(`Could not parse local Post Board storage: ${e.message}`);
