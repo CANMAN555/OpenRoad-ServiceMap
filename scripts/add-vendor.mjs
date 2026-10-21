@@ -11,7 +11,7 @@
 // (or carries the "approved" label). The result is written to comment.md for the workflow to post on the issue, the
 // labels to set to labels.txt, and "added=true|false" to $GITHUB_OUTPUT.
 import { appendFile, readFile, writeFile } from "node:fs/promises";
-import { LIVE_LAYERS, UA, censusGeocode, checkSite, clean, formatPhone, formatZip } from "./lib.mjs";
+import { LIVE_LAYERS, REQUEST_LABELS, RESEARCH_LABELS, UA, censusGeocode, checkSite, clean, formatPhone, formatZip, parseBlocks } from "./lib.mjs";
 
 const out = async (added) => process.env.GITHUB_OUTPUT && appendFile(process.env.GITHUB_OUTPUT, `added=${added}\n`);
 // Several events can arrive at once (Claude edits the request and labels it), so read the request as it is now.
@@ -30,13 +30,10 @@ const owner = (process.env.REPO_OWNER || "").toLowerCase();
 const approved = labels.has("approved") || (issue.user.login.toLowerCase() === owner && !labels.has("from-website"));
 const researched = labels.has("checked-by-claude");
 
-// Issue forms come back as "### Label\n\nvalue" blocks; "_No response_" means the field was left empty.
-const fields = {};
-for (const part of String(issue.body || "").split(/^### /m).slice(1)) {
-  const nl = part.indexOf("\n");
-  const label = part.slice(0, nl).trim(), value = part.slice(nl + 1).trim();
-  fields[label] = value === "_No response_" ? "" : value;
-}
+// The form's fields, then (once Claude has checked the vendor) Claude's blocks; any other layout is turned away.
+const layouts = researched ? [REQUEST_LABELS.concat(RESEARCH_LABELS.slice(0, 3)), REQUEST_LABELS.concat(RESEARCH_LABELS)] : [REQUEST_LABELS];
+const parsed = parseBlocks(issue.body, layouts);
+const fields = parsed.fields || {};
 const f = (label) => clean(fields[label]) || "";
 // Which sections the vendor goes in. Claude's "### Sections" (after checking the website) wins; otherwise the services
 // decide: Towing puts it in Towing, Locksmith in Locksmiths, Glass repair in Glass repair, any other service in Other
@@ -57,13 +54,16 @@ const req = {
 
 const lines = [], problems = [];
 const say = (ok, text) => lines.push(`${ok ? "✅" : "❌"} ${text}`);
-if (!req.name) problems.push("The business name is missing.");
 req.sections = researched && fields.Sections
   ? [...new Set(String(fields.Sections).split(/[,\n]/).map((x) => SECTIONS[clean(x)]).filter(Boolean))]
-  : fromServices(req.services).length ? fromServices(req.services) : [SECTIONS[f("Section")]].filter(Boolean);
-if (!req.sections.length) problems.push("Check at least one service so the vendor lands in a section.");
-if (!req.address || !req.city || !/^[A-Z]{2}$/.test(req.state)) problems.push("The street address, city and 2-letter state are all needed.");
-if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(req.phone || "")) problems.push("The phone number must be a 10-digit U.S. number.");
+  : fromServices(req.services);
+if (parsed.error) problems.push(parsed.error);
+else {
+  if (!req.name) problems.push("The business name is missing.");
+  if (!req.sections.length) problems.push("Check at least one service so the vendor lands in a section.");
+  if (!req.address || !req.city || !/^[A-Z]{2}$/.test(req.state)) problems.push("The street address, city and 2-letter state are all needed.");
+  if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(req.phone || "")) problems.push("The phone number must be a 10-digit U.S. number.");
+}
 
 let point = null, site = null;
 if (!problems.length) {

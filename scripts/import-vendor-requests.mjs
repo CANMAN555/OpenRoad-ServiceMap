@@ -1,8 +1,10 @@
 // Turns "Add a vendor" requests sent from the map (saved in Supabase by vr_submit, see addvendor/vendor-requests.sql)
 // into GitHub requests that Claude checks. Each one becomes an issue in the same "### Label" layout the issue form
-// makes, labeled "needs-research" (Claude looks it up next) and "from-website" (the owner still approves it).
+// makes (typed text can't add a heading of its own, see requestBlock), labeled "needs-research" (Claude looks it
+// up next) and "from-website" (the owner still approves it).
 // A request already turned into an issue is recognized by the "Website request #<id>" line and skipped.
 import { readFile } from "node:fs/promises";
+import { requestBlock as block } from "./lib.mjs";
 
 const cfgText = await readFile("postboard/config.js", "utf8");
 const url = (/supabaseUrl:\s*"([^"]+)"/.exec(cfgText) || [])[1], key = (/supabaseAnonKey:\s*"([^"]+)"/.exec(cfgText) || [])[1];
@@ -27,15 +29,15 @@ for (let page = 1; page < 20; page++) {
   if (list.length < 100) break;
 }
 
-const block = (label, value) => `### ${label}\n\n${String(value || "").trim() || "_No response_"}\n`;
 for (const q of pending) {
   if (done.has(q.id)) continue;
   const phone = `(${q.phone.slice(0, 3)}) ${q.phone.slice(3, 6)}-${q.phone.slice(6)}`;
   const body = [
     `Website request #${q.id}, sent from the map's Add a vendor form on ${q.created_at.slice(0, 10)}.`, "",
-    block("Business name", q.name), block("Section", q.section), block("Services", q.services),
-    block("Street address", q.address), block("City", q.city), block("State (2 letters)", q.state), block("ZIP code", q.zip),
-    block("Phone number", phone), block("Notes", q.notes),
+    // Same fields and order as the issue form (the services decide the sections).
+    ...[["Business name", q.name], ["Services", String(q.services || "").replace(/\s*\n\s*/g, ", ")], ["Street address", q.address], ["City", q.city],
+      ["State (2 letters)", q.state], ["ZIP code", q.zip], ["Phone number", phone]].map(([l, v]) => block(l, v, { oneLine: true })),
+    block("Notes", q.notes),
   ].join("\n");
   const res = await gh("/issues", { method: "POST", body: JSON.stringify({ title: `Add vendor: ${q.name}`, body, labels: ["add-vendor", "from-website", "needs-research"] }) });
   console.log(res.ok ? `Opened ${(await res.json()).html_url} for website request #${q.id}` : `Could not open website request #${q.id}: ${res.status}`);
