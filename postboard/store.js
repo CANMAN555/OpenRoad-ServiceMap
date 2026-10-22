@@ -116,8 +116,25 @@
   const LOCAL_PIN_SHA256 = CFG.localPinSha256 || "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
   function local(pin) {
     const KEY = "pb-local-board";
-    const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
-    const save = (all) => { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {} };
+    const load = () => {
+      let raw;
+      try { raw = localStorage.getItem(KEY); }
+      catch (e) { throw new Error(`Could not read local Post Board storage: ${e.message}`); }
+      if (raw === null) return {};
+      try {
+        const all = JSON.parse(raw);
+        if (!all || typeof all !== "object" || Array.isArray(all)) throw new Error("Stored data is not a board object.");
+        for (const [col, docs] of Object.entries(all))
+          if (!docs || typeof docs !== "object" || Array.isArray(docs)) throw new Error(`Collection "${col}" is not an object.`);
+        return all;
+      } catch (e) {
+        throw new Error(`Could not parse local Post Board storage: ${e.message}`);
+      }
+    };
+    const save = (all) => {
+      try { localStorage.setItem(KEY, JSON.stringify(all)); }
+      catch (e) { throw new Error(`Could not save local Post Board storage: ${e.message}`); }
+    };
     let applyFn;
     return {
       kind: "local",
