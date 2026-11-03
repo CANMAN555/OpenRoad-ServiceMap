@@ -117,8 +117,14 @@ if (!problems.length) {
   // Phone on the website Claude found
   if (!problems.length && researched) {
     site = req.website ? await checkSite(req.website, req.phone) : "Claude did not find a website";
+    // Some vendor sites turn away GitHub's servers. The "owner-checked-site" label (only collaborators can label) means
+    // the map owner opened the site and saw this phone number there, so the website counts as checked.
+    if (typeof site === "string" && req.website && labels.has("owner-checked-site")) {
+      say(true, `Website check: ${site}, but the map owner confirmed phone ${req.phone} on ${req.website}.`);
+      site = { url: req.website, byOwner: true };
+    }
     if (typeof site === "string") { say(false, `Website check: ${site}${req.website ? ` (${req.website})` : ""}.`); problems.push("The phone number could not be confirmed on the vendor's own website."); }
-    else say(true, `Phone ${req.phone} found on the vendor's website: ${site.url}`);
+    else if (!site.byOwner) say(true, `Phone ${req.phone} found on the vendor's website: ${site.url}`);
     if (req.hours) say(true, `Hours: ${req.hours}${req.hoursSource ? ` (from ${req.hoursSource})` : ""}`);
   }
 }

@@ -17,10 +17,10 @@ concurrency:
 
 jobs:
   check:
-    # Requests from the map's form or the issue template start with "Add vendor:". Of the labels, only these two re-run it.
+    # Requests from the map's form or the issue template start with "Add vendor:". Of the labels, only these three re-run it.
     if: >-
       startsWith(github.event.issue.title, 'Add vendor:') && github.event.issue.state == 'open' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'approved' || github.event.label.name == 'checked-by-claude')
+      (github.event.action != 'labeled' || github.event.label.name == 'approved' || github.event.label.name == 'checked-by-claude' || github.event.label.name == 'owner-checked-site')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -34,6 +34,7 @@ jobs:
           gh label create approved --color 2E7D32 --description "Map owner approved this vendor request" --force || true
           gh label create needs-research --color FBC02D --description "Waiting for Claude to find the vendor's website and hours" --force || true
           gh label create checked-by-claude --color 1565C0 --description "Claude found the vendor's website and hours" --force || true
+          gh label create owner-checked-site --color 00796B --description "Map owner saw the phone number on the vendor's website" --force || true
           gh label create from-website --color 6A1B9A --description "Sent from the map's Add a vendor form; the owner approves it" --force || true
         env:
           GH_TOKEN: ${{ github.token }}
