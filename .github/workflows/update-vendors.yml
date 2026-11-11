@@ -40,42 +40,55 @@ jobs:
           node-version: 20
       # Each source runs on its own so one site being down doesn't block the others.
       - name: TA, Petro and TA Express
+        id: ta
         run: node scripts/update-ta.mjs
         continue-on-error: true
       - name: Freightliner
+        id: freightliner
         run: node scripts/update-freightliner.mjs
         continue-on-error: true
       - name: Volvo Trucks
+        id: volvo
         run: node scripts/update-volvo.mjs
         continue-on-error: true
       - name: Boss Truck Shops
+        id: boss
         run: node scripts/update-boss.mjs
         continue-on-error: true
       - name: Utility Trailer
+        id: utility
         run: node scripts/update-utility.mjs
         continue-on-error: true
       - name: Prestige Trailers
+        id: prestige
         run: node scripts/update-prestige.mjs
         continue-on-error: true
       - name: Timpte
+        id: timpte
         run: node scripts/update-timpte.mjs
         continue-on-error: true
       - name: Thermo King
+        id: thermoking
         run: node scripts/update-thermoking.mjs
         continue-on-error: true
       - name: Carrier Transicold
+        id: carrier
         run: node scripts/update-carrier.mjs
         continue-on-error: true
       - name: FleetPride
+        id: fleetpride
         run: node scripts/update-fleetpride.mjs
         continue-on-error: true
       - name: Southern Tire Mart
+        id: stm
         run: node scripts/update-stm.mjs
         continue-on-error: true
       - name: Pomp's Tire
+        id: pomps
         run: node scripts/update-pomps.mjs
         continue-on-error: true
       - name: Bauer Built
+        id: bauer
         run: node scripts/update-bauer.mjs
         continue-on-error: true
       - name: Commit if changed
@@ -87,3 +100,20 @@ jobs:
           git commit -m "Update brand locations"
           git pull --rebase origin main
           git push
+      - name: Report vendor updater failures
+        if: always()
+        env:
+          TA_OUTCOME: ${{ steps.ta.outcome }}
+          FREIGHTLINER_OUTCOME: ${{ steps.freightliner.outcome }}
+          VOLVO_OUTCOME: ${{ steps.volvo.outcome }}
+          BOSS_OUTCOME: ${{ steps.boss.outcome }}
+          UTILITY_OUTCOME: ${{ steps.utility.outcome }}
+          PRESTIGE_OUTCOME: ${{ steps.prestige.outcome }}
+          TIMPTE_OUTCOME: ${{ steps.timpte.outcome }}
+          THERMOKING_OUTCOME: ${{ steps.thermoking.outcome }}
+          CARRIER_OUTCOME: ${{ steps.carrier.outcome }}
+          FLEETPRIDE_OUTCOME: ${{ steps.fleetpride.outcome }}
+          STM_OUTCOME: ${{ steps.stm.outcome }}
+          POMPS_OUTCOME: ${{ steps.pomps.outcome }}
+          BAUER_OUTCOME: ${{ steps.bauer.outcome }}
+        run: node scripts/report-vendor-update-failures.mjs
