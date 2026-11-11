@@ -8,6 +8,19 @@ import zlib from "node:zlib";
 
 export const UA = "Mozilla/5.0 (compatible; OpenRoadServiceMap/1.0; +https://github.com/CANMAN555/OpenRoad-ServiceMap)";
 
+export async function fetchWithTimeout(url, init, timeoutMs, consume = async (response) => response) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await consume(await fetch(url, { ...init, signal: controller.signal }));
+  } catch (e) {
+    if (controller.signal.aborted) throw new Error(`Request to ${url} timed out after ${timeoutMs} ms.`, { cause: e });
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // Turns HTML character references some feeds leave in their text ("O&#x27;Donnell", "&nbsp;") into characters.
 const NAMED = { amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " " };
 const decode = (s) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) =>
@@ -67,19 +80,23 @@ export function formatPhone(p) {
 }
 
 // GET with retries and backoff; these sites occasionally answer 5xx for a few seconds.
-export async function fetchText(url, { tries = 5, accept = "*/*" } = {}) {
+export async function fetchText(url, { tries = 5, accept = "*/*", timeoutMs = 60000, retryDelayMs = 3000 } = {}) {
   let last;
   for (let attempt = 0; attempt < tries; attempt++) {
     try {
-      const r = await fetch(url, { headers: { "User-Agent": UA, Accept: accept } });
-      if (r.ok) return await r.text();
+      const result = await fetchWithTimeout(url, { headers: { "User-Agent": UA, Accept: accept } }, timeoutMs, async (r) => ({
+        response: r,
+        text: r.ok ? await r.text() : null,
+      }));
+      const { response: r, text } = result;
+      if (r.ok) return text;
       if (r.status === 404) throw Object.assign(new Error("HTTP 404"), { notFound: true });
       last = "HTTP " + r.status;
     } catch (e) {
       if (e.notFound) throw e;
       last = e.message;
     }
-    await new Promise((res) => setTimeout(res, 3000 * (attempt + 1)));
+    if (attempt + 1 < tries) await new Promise((res) => setTimeout(res, retryDelayMs * (attempt + 1)));
   }
   throw new Error(`${url}: ${last}`);
 }
@@ -138,19 +155,22 @@ export async function pool(items, size, fn) {
 
 // Street-level coordinates from the U.S. Census Bureau's free batch geocoder.
 // list: [{id, street, city, state, zip}] -> Map(id -> [lat, lon]) for the addresses it matched.
-export async function censusGeocode(list) {
+export async function censusGeocode(list, { timeoutMs = 120000, tries = 4, retryDelayMs = 10000 } = {}) {
   const out = new Map();
   const csvField = (v) => `"${String(v || "").replace(/"/g, "'")}"`;
   for (let i = 0; i < list.length; i += 200) {
     const csv = list.slice(i, i + 200).map((s) => [s.id, s.street, s.city, s.state, s.zip].map(csvField).join(",")).join("\n");
-    for (let attempt = 0; attempt < 4; attempt++) {
+    for (let attempt = 0; attempt < tries; attempt++) {
       const form = new FormData();
       form.append("addressFile", new Blob([csv], { type: "text/csv" }), "addresses.csv");
       form.append("benchmark", "Public_AR_Current");
       try {
-        const r = await fetch("https://geocoding.geo.census.gov/geocoder/locations/addressbatch", { method: "POST", body: form, headers: { "User-Agent": UA } });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const text = await r.text();
+        const text = await fetchWithTimeout("https://geocoding.geo.census.gov/geocoder/locations/addressbatch", {
+          method: "POST", body: form, headers: { "User-Agent": UA },
+        }, timeoutMs, async (r) => {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.text();
+        });
         // The geocoder sometimes answers 200 with an error page instead of results; retry those.
         if (!/"Match"|"No_Match"|"Tie"/.test(text)) throw new Error("unexpected answer: " + text.slice(0, 120).replace(/\s+/g, " "));
         for (const line of text.split("\n")) {
@@ -163,7 +183,7 @@ export async function censusGeocode(list) {
         break;
       } catch (e) {
         console.warn(`Census geocoder (batch ${i / 200 + 1}, try ${attempt + 1}):`, e.message);
-        await new Promise((res) => setTimeout(res, 10000 * (attempt + 1)));
+        if (attempt + 1 < tries) await new Promise((res) => setTimeout(res, retryDelayMs * (attempt + 1)));
       }
     }
   }
