@@ -104,9 +104,32 @@ export const span = (a, b) => {
 // A correction is used only while the company still lists the same street address, so a store that
 // moves gets the company's new coordinates instead of an old fix.
 const sameAddress = (a, b) => String(a || "").toLowerCase().replace(/[^a-z0-9]/g, "") === String(b || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+export async function readPinFixes() {
+  let text;
+  try { text = await readFile("data/pin-fixes.json", "utf8"); }
+  catch (e) {
+    if (e.code === "ENOENT") { console.warn("No data/pin-fixes.json; pins not corrected"); return {}; }
+    throw new Error(`Could not read data/pin-fixes.json: ${e.message}`, { cause: e });
+  }
+
+  let fixes;
+  try { fixes = JSON.parse(text); }
+  catch (e) { throw new Error(`Could not parse data/pin-fixes.json: ${e.message}`, { cause: e }); }
+  if (!fixes || typeof fixes !== "object" || Array.isArray(fixes)) throw new Error("Invalid data/pin-fixes.json: expected an object of corrections.");
+  for (const [key, fix] of Object.entries(fixes)) {
+    if (!fix || typeof fix !== "object" || Array.isArray(fix) ||
+        typeof fix.address !== "string" || !fix.address.trim() ||
+        typeof fix.lat !== "number" || !Number.isFinite(fix.lat) || fix.lat < -90 || fix.lat > 90 ||
+        typeof fix.lon !== "number" || !Number.isFinite(fix.lon) || fix.lon < -180 || fix.lon > 180 ||
+        typeof fix.why !== "string" || !fix.why.trim()) {
+      throw new Error(`Invalid pin correction "${key}" in data/pin-fixes.json.`);
+    }
+  }
+  return fixes;
+}
+
 export async function applyPinFixes(name, stores) {
-  let fixes = {};
-  try { fixes = JSON.parse(await readFile("data/pin-fixes.json", "utf8")); } catch { return 0; }
+  const fixes = await readPinFixes();
   let n = 0;
   for (const s of stores) {
     const f = fixes[`${name}:${s.id}`];

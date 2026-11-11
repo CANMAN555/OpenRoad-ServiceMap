@@ -5,7 +5,7 @@
 // data/pin-fixes.json, which the update scripts apply on every weekly refresh.
 // Usage: node scripts/check-pins.mjs [--apply]. Run by .github/workflows/check-pins.yml.
 import { readFile, writeFile } from "node:fs/promises";
-import { applyPinFixes, censusGeocode, UA } from "./lib.mjs";
+import { applyPinFixes, censusGeocode, readPinFixes, UA } from "./lib.mjs";
 
 const APPLY = process.argv.includes("--apply");
 
@@ -75,8 +75,7 @@ for (const r of disputed.sort((a, b) => b.off - a.off))
 await writeFile("pin-check.json", JSON.stringify(rows));
 
 // Keep earlier fixes whose store still lists the same address, and add the new ones.
-let fixes = {};
-try { fixes = JSON.parse(await readFile("data/pin-fixes.json", "utf8")); } catch {}
+const fixes = await readPinFixes();
 const live = new Map(rows.map((r) => [`${r.brand}:${r.id}`, r]));
 for (const k of Object.keys(fixes)) if (!live.has(k)) delete fixes[k];
 for (const r of disputed.filter((r) => r.verdict === "move")) {
